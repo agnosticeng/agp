@@ -1,81 +1,76 @@
-AGP is a system that manages the asynchronous execution of SQL queries against a ClickHouse cluster.
+# AGP - Asynchronous Query Processor
 
-## Running with Docker Compose
+AGP is a system for managing the asynchronous execution of SQL queries against a ClickHouse cluster. It efficiently handles query orchestration, execution, and result management, making it ideal for long-running analytical workloads.
 
-AGP relies on Postgres for query orchestration, and Clickhouse for query execution.
-The Docker Compose file will build AGP and run all the dependencies.
+## 🚀 Getting Started with Docker Compose
+
+AGP relies on PostgreSQL for query orchestration and ClickHouse for execution. The provided Docker Compose file builds AGP and starts all required dependencies.
 
 ```sh
 docker compose up -d
 ```
 
-## Concepts
+## 🔍 Key Concepts
 
 ### Execution
+AGP orchestrates SQL query execution asynchronously, ensuring efficient resource utilization.
 
-The primary role of AGP is to orchestrate the asynchronous execution of SQL queries and manage their results.
+- **Execution**: A container for an SQL query scheduled for execution.
+- **Queueing**: Executions are created via the API and stored in PostgreSQL.
+- **Workers**: A fleet of workers processes executions against ClickHouse.
+- **Tracking**: The API provides status updates (**PENDING, RUNNING, CANCELED, FAILED, SUCCEEDED**), query progress, and result availability.
+- **Result Storage**: Successfully completed executions are stored in an object store for retrieval until expiration.
 
-An Execution serves as a container for an SQL query that is scheduled for future execution. These executions are created via the API and placed in a queue within a PostgreSQL table.
+### Execution Collapsing
+To prevent redundant execution of identical queries, AGP supports query deduplication:
 
-A fleet of Workers continuously polls for new pending executions and processes them against a ClickHouse cluster.
+- A **query_id** can be assigned at execution creation.
+- At any given time, only **one in-flight Execution** (**PENDING** or **RUNNING**) exists per `query_id`.
+- If no `query_id` is specified, it defaults to a hash of the SQL query.
 
-The API enables tracking of execution state changes, including key statuses (PENDING, RUNNING, CANCELED, FAILED, SUCCEEDED), query progress metrics (such as the number of rows scanned and bytes read), and the availability of results.
+### Result Storage
+AGP supports long-running analytical queries where some degree of data staleness is acceptable:
 
-When an Execution completed successfully, it's result is stored in an Object Store and can be retrieve until it is expired.
+- Execution results are stored in an **object store** or **local filesystem**.
+- The API allows listing past executions for a given `query_id` and retrieving their results.
+- Users can flexibly choose to use recent results instead of re-executing queries.
 
-### Execution collapsing
+### Tier-based Resource Allocation
+AGP dynamically manages execution priority based on user typology:
 
-A query_id can be assigned when an Execution is created to prevent redundant queuing of the same query, thereby optimizing resource usage.
+- **Customizable Tiers**: Executions are assigned a tier at creation (a string value).
+- **Resource Allocation**: Higher-tier users (e.g., experienced analysts) may access more CPU and longer query times, while lower-tier users have more restricted execution limits.
+- **Flexible Worker Configurations**: Different workers handle different tiers and can be configured with distinct ClickHouse settings or separate clusters.
 
-At any given time, only one in-flight Execution (i.e., with a status of PENDING or RUNNING) can exist for a specific query_id.
+## ⚙️ System Architecture
 
-If no query_id is provided at creation, it defaults to the hash of the SQL query.
-
-### Result storage
-
-Successful execution results are stored in an object store or local filesystem for future retrieval.
-
-AGP is designed to support long-running analytical queries, where some degree of data staleness is acceptable.
-
-The API enables listing existing executions for a given query_id and retrieving their results, allowing for a flexible approach where users can access relatively recent results if they meet their needs.
-
-### Tier
-
-The system is designed to allocate resources based on user typology, ensuring different user groups have varying levels of access to underlying resources.
-
-For example, an experienced analyst may be granted higher CPU allocation and the ability to run longer queries on the ClickHouse cluster, while a junior analyst might be restricted to shorter queries with minimal CPU usage.
-
-To support this flexibility, each Execution is assigned a tier (a customizable string value) at creation. Different worker processes handle different tiers, allowing for distinct ClickHouse configurations, including varied settings or even separate clusters.
-
-## Architecture
-
-### Server
-
-The API server enables users to interact with the system by creating Executions, listing them, polling their status, and retrieving results.
+### API Server
+The API server allows users to:
+- Create executions
+- List executions
+- Poll execution statuses
+- Retrieve results
 
 ### Worker
-
-The worker is responsible for polling PostgreSQL for new available Executions and executing them against the ClickHouse cluster.
-
-It also updates the execution status throughout the process and stores the results in the object store.
-
-Multiple workers can operate simultaneously, each assigned to different tiers as needed.
+Workers are responsible for:
+- Polling PostgreSQL for new executions
+- Running queries against the ClickHouse cluster
+- Updating execution status and storing results
 
 ### Bookkeeper
+The Bookkeeper maintains system stability by:
+- Detecting and recovering from dead workers to prevent stuck executions
+- Expiring old executions and their results
 
-The Bookkeeper is a process responsible for running various control loops to maintain the system's stability and efficiency.
+## 📘 API Documentation
 
-Its tasks include:
-
-- Ensuring that executions do not remain stuck in a RUNNING status due to dead workers.
-- Expiring old executions and their associated results.
-
-## API documentation
-
-The API is built with OpenAPI and it's documentation can be viewed by running the following command:
+AGP's API is built with **OpenAPI**, and the documentation can be viewed using:
 
 ```sh
 go run github.com/swaggest/swgui/cmd/swgui internal/api/v1/async/api.yaml
 ```
 
-The server also expose an embedded Swagger UI at [http://localhost:8888/v1/async/docs/](http://localhost:8888/v1/async/docs/).
+Alternatively, the API server exposes an embedded Swagger UI at:
+[http://localhost:8888/v1/async/docs/](http://localhost:8888/v1/async/docs/)
+
+---
