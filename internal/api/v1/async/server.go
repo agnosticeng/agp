@@ -107,6 +107,7 @@ func (srv *Server) PostRun(ctx context.Context, request PostRunRequestObject) (P
 			Statuses: []async_executor.Status{async_executor.StatusSucceeded},
 			SortBy:   async_executor.SortByCompletedAt,
 			Limit:    1,
+			Query:    query,
 		},
 	)
 

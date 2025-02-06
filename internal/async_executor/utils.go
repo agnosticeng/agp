@@ -21,7 +21,7 @@ func fnv1aHashInt64Sum(s string) int64 {
 func sha256HashHexDigest(s string) string {
 	var h = sha256.New()
 	h.Write([]byte(s))
-	return hex.EncodeToString(sha256.New().Sum(nil))
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 func countRows(rows pgx.Rows) (int, error) {

@@ -4,6 +4,7 @@ go 1.23.2
 
 require (
 	github.com/ClickHouse/clickhouse-go/v2 v2.30.0
+	github.com/NYTimes/gziphandler v1.1.1
 	github.com/agnosticeng/cliutils v0.1.0
 	github.com/agnosticeng/cnf v0.1.0
 	github.com/agnosticeng/objstr v0.1.2
@@ -18,6 +19,7 @@ require (
 	github.com/oapi-codegen/oapi-codegen/v2 v2.4.1
 	github.com/oapi-codegen/runtime v1.1.1
 	github.com/samber/lo v1.49.1
+	github.com/swaggest/swgui v1.8.2
 	github.com/urfave/cli/v2 v2.27.5
 	github.com/veqryn/slog-context v0.7.0
 	golang.org/x/sync v0.11.0
@@ -29,7 +31,6 @@ require (
 	github.com/Masterminds/goutils v1.1.1 // indirect
 	github.com/Masterminds/semver/v3 v3.3.1 // indirect
 	github.com/Masterminds/sprig/v3 v3.3.0 // indirect
-	github.com/NYTimes/gziphandler v1.1.1 // indirect
 	github.com/agnosticeng/concu v0.0.2 // indirect
 	github.com/agnosticeng/dynamap v0.1.2 // indirect
 	github.com/agnosticeng/mapstructure-hooks v0.3.0 // indirect
@@ -74,7 +75,6 @@ require (
 	github.com/speakeasy-api/openapi-overlay v0.9.0 // indirect
 	github.com/spf13/afero v1.12.0 // indirect
 	github.com/spf13/cast v1.7.1 // indirect
-	github.com/swaggest/swgui v1.8.2 // indirect
 	github.com/vearutop/statigz v1.4.3 // indirect
 	github.com/vmware-labs/yaml-jsonpath v0.3.2 // indirect
 	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect

@@ -103,6 +103,7 @@ type ListByQueryIdOptions struct {
 	Statuses []Status
 	SortBy   SortBy
 	Limit    int
+	Query    string // if not empty, will also filter by query hash
 }
 
 func (aex *AsyncExecutor) ListByQueryId(ctx context.Context, queryId string, opts ListByQueryIdOptions) ([]*Execution, error) {
@@ -124,11 +125,18 @@ func (aex *AsyncExecutor) ListByQueryId(ctx context.Context, queryId string, opt
 		opts.Limit = max(opts.Limit, 100)
 	}
 
+	var queryHash string
+
+	if len(opts.Query) > 0 {
+		queryHash = sha256HashHexDigest(opts.Query)
+	}
+
 	rows, err := queries.Query(ctx, aex.pool, "list_by_query_id.sql", pgx.NamedArgs{
-		"query_id": queryId,
-		"statuses": opts.Statuses,
-		"sort_by":  opts.SortBy,
-		"limit":    opts.Limit,
+		"query_id":   queryId,
+		"statuses":   opts.Statuses,
+		"sort_by":    opts.SortBy,
+		"limit":      opts.Limit,
+		"query_hash": queryHash,
 	})
 
 	if err != nil {
