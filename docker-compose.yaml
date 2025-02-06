@@ -9,3 +9,27 @@ services:
       - POSTGRES_PASSWORD=postgres 
     ports:
       - '5432:5432'
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.12 
+    restart: always
+    ports: 
+      - '9000:9000'
+      - '8123:8123'
+
+  agp:  
+    build: ./
+    restart: always
+    command: standalone
+    ports:
+      - '8888:8888'
+    environment:
+      - LOG_LEVEL=0
+      - AGP__DSN=postgres://postgres:postgres@postgres:5432/postgres
+      - AGP__RESULT_STORAGE_PREFIX=file:///tmp/agp 
+      - AGP__RESULT_STORAGE_COMPRESSION=GZIP 
+      - AGP__WORKER__BACKENDS__0__DSN=clickhouse://clickhouse:9000/default
+      - AGP__SERVER__API__ASYNC__ENABLE=true 
+      - AGP__SERVER__API__SYNC__ENABLE=true
+      - AGP__SERVER__API__SYNC__BACKENDS__0__DSN=clickhouse://clickhouse:9000/default
+      - AGP__SERVER__SECRET=secret 
