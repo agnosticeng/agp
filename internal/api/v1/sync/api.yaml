@@ -1,0 +1,44 @@
+openapi: 3.0.2
+
+info:
+  version: 1.0.0
+  title: Agnostic Proxy Sync API
+
+servers:
+  - url: /v1/sync
+
+security:
+  - {}
+  - Secret: []
+
+components:
+  securitySchemes:
+    Secret:
+      type: http
+      scheme: bearer
+
+paths:
+  /run:
+    post:
+      parameters:
+        - $ref: '../common.yaml#/components/parameters/Authorization'
+        - $ref: '../common.yaml#/components/parameters/QuotaKey'
+        - $ref: '../common.yaml#/components/parameters/Tier'
+        - $ref: '../common.yaml#/components/parameters/Stream'
+      requestBody:
+        required: true
+        content:
+          text/plain:
+            schema:
+              type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '../common.yaml#/components/schemas/Result'
+            text/event-stream:
+              schema:
+                oneOf: 
+                  - $ref: '../common.yaml#/components/schemas/ProgressEvent'
+                  - $ref: '../common.yaml#/components/schemas/ResultEvent'

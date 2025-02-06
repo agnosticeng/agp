@@ -1,0 +1,84 @@
+components:
+  schemas:
+    Progress:
+      type: object
+      properties:
+        rows:
+          type: integer
+          format: int64
+        bytes:
+          type: integer
+          format: int64
+        total_rows:
+          type: integer
+          format: int64
+        elapsed:
+          type: integer
+          format: int64
+          minimum: 0
+
+    Column:
+      type: object
+      required:
+        - name 
+        - type
+      properties:
+        name:
+          type: string
+        type: 
+          type: string
+
+    Result:
+      type: object
+      properties:
+        meta:
+          type: array
+          items:
+            $ref: '#/components/schemas/Column'
+        rows:
+          type: integer
+          format: int64
+        data:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+
+    ProgressEvent:
+      type: object 
+      properties:
+        progress:
+          $ref: '#/components/schemas/Progress'
+
+    ResultEvent:
+      allOf:
+        - $ref: '#/components/schemas/Result'
+        - type: object
+          properties:
+            error: 
+              type: string
+
+  parameters:
+    Stream:
+      in: query
+      name: stream
+      schema:
+        type: boolean
+
+    QuotaKey:
+      in: query
+      name: quota-key
+      schema:
+        type: string
+
+    Tier:
+      in: query
+      name: tier
+      schema:
+        type: string
+
+    Authorization:
+      in: header
+      name: Authorization
+      schema:
+        type: string

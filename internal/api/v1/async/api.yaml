@@ -1,0 +1,164 @@
+openapi: 3.0.2
+
+info:
+  version: 1.0.0
+  title: Agnostic Proxy Async API
+
+servers:
+  - url: /v1/async
+
+security:
+  - Secret: []
+
+components:
+  securitySchemes:
+    Secret:
+      type: http
+      scheme: Basic
+
+  schemas:
+    ExecutionStatus:
+      type: string
+      enum:
+        - PENDING
+        - RUNNING
+        - CANCELED
+        - FAILED
+        - SUCCEEDED
+
+    Execution:
+      type: object
+      required:
+        - id
+        - query_id
+        - query_hash
+        - created_at
+        - query
+        - status
+      properties:
+        id: 
+          type: integer
+          format: int64
+        query_id:
+          type: string
+        query_hash:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        query:
+          type: string
+        status:
+          $ref: '#/components/schemas/ExecutionStatus'
+        picked_at: 
+          type: string
+          format: date-time
+        progress:
+          $ref: '../common.yaml#/components/schemas/Progress'
+        completed_at: 
+          type: string
+          format: date-time
+        result:
+          $ref: '#/components/schemas/ResultMetadata'  
+        error: 
+          type: string
+
+    ResultMetadata:
+      type: object
+      properties:
+        meta:
+          type: array
+          items:
+            $ref: '../common.yaml#/components/schemas/Column'
+        rows:
+          type: integer
+          format: int64
+
+  parameters:
+    ExecutionId:
+      in: path
+      name: execution_id
+      required: true
+      schema:
+        type: integer
+        format: int64
+
+    QueryId:
+      in: query
+      name: query-id
+      schema:
+        type: string
+
+    StaleAfter:
+      in: query
+      name: stale-after
+      schema:
+        type: integer
+        format: int64
+
+paths:
+  /executions:
+    post:
+      parameters:
+        - $ref: '../common.yaml#/components/parameters/QuotaKey'
+        - $ref: '../common.yaml#/components/parameters/Tier'
+        - $ref: '#/components/parameters/QueryId'
+      requestBody:
+        required: true
+        content:
+          text/plain:
+            schema:
+              type: string
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Execution"
+
+  /executions/{execution_id}:
+    get:
+      parameters:
+        - $ref: '../common.yaml#/components/parameters/QuotaKey'
+        - $ref: "#/components/parameters/ExecutionId"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Execution"
+        "404": {}
+
+  /executions/{execution_id}/result:
+    get:
+      parameters:
+        - $ref: '../common.yaml#/components/parameters/QuotaKey'
+        - $ref: "#/components/parameters/ExecutionId"
+      responses:
+        "200":
+          content:
+            application/octet-stream:
+              schema:
+                $ref: '../common.yaml#/components/schemas/Result'
+        "404": {}
+
+  /run:
+    post:
+      parameters:
+        - $ref: '../common.yaml#/components/parameters/QuotaKey'
+        - $ref: '../common.yaml#/components/parameters/Tier'
+        - $ref: '#/components/parameters/QueryId'
+        - $ref: '#/components/parameters/StaleAfter'
+      requestBody:
+        required: true
+        content:
+          text/plain:
+            schema:
+              type: string
+      responses:
+        "200":
+          content:
+            application/octet-stream:
+              schema:
+                $ref: '../common.yaml#/components/schemas/Result'
+        "201": {}

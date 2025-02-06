@@ -1,0 +1,181 @@
+package server
+
+import (
+	"context"
+	"crypto/tls"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"time"
+
+	"github.com/NYTimes/gziphandler"
+	"github.com/agnosticeng/agp/internal/api/v1/async"
+	"github.com/agnosticeng/agp/internal/api/v1/sync"
+	"github.com/agnosticeng/agp/internal/async_executor"
+	backend_impl "github.com/agnosticeng/agp/internal/backend/impl"
+	"github.com/agnosticeng/agp/pkg/client_ip_middleware"
+	"github.com/agnosticeng/agp/pkg/openapi3_secret_authenticator"
+	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/getkin/kin-openapi/openapi3filter"
+	oapi_middleware "github.com/oapi-codegen/nethttp-middleware"
+	"github.com/samber/lo"
+	"github.com/swaggest/swgui/v5emb"
+	slogctx "github.com/veqryn/slog-context"
+)
+
+type AsyncAPIConfig struct {
+	Enable bool
+}
+
+type SyncAPIConfig struct {
+	Enable   bool
+	Backends []BackendTierConfig
+}
+
+type APIConfig struct {
+	Sync  SyncAPIConfig
+	Async AsyncAPIConfig
+}
+
+type BackendTierConfig struct {
+	Tier string
+	Dsn  string
+}
+
+type TLSConfig struct {
+	Cert string
+	Key  string
+}
+
+type ServerConfig struct {
+	Addr   string
+	Secret string
+	Api    APIConfig
+	Tls    *TLSConfig
+}
+
+func Server(ctx context.Context, aex *async_executor.AsyncExecutor, conf ServerConfig) error {
+	var (
+		logger = slogctx.FromCtx(ctx)
+		mux    = http.NewServeMux()
+	)
+
+	if conf.Api.Async.Enable {
+		if aex == nil {
+			return fmt.Errorf("AsyncExecutor must be provided for async API to work")
+		}
+
+		var validationMiddleware = validationMiddleware(
+			swaggerWithServer(lo.Must(async.GetSwagger()), "/v1/async"),
+			openapi3_secret_authenticator.OpenAPI3SecretAuthenticator(
+				conf.Secret,
+				openapi3_secret_authenticator.OpenAPI3SecretAuthenticatorConfig{},
+			),
+		)
+		var strictHandler = async.NewStrictHandler(async.NewServer(ctx, aex), nil)
+		var handler = async.HandlerWithOptions(strictHandler, async.StdHTTPServerOptions{BaseURL: "/v1/async"})
+		handler = validationMiddleware(handler)
+		handler = client_ip_middleware.ClientIP(handler)
+		mux.Handle("/v1/async/spec.json", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			json.NewEncoder(w).Encode(lo.Must(async.GetSwagger()))
+		}))
+		mux.Handle("/v1/async/docs/", v5emb.New("AGP Sync API", "/v1/async/spec.json", "/v1/async/docs/"))
+		mux.Handle("/v1/async/", handler)
+	}
+
+	if conf.Api.Sync.Enable {
+		var bkds []sync.BackendTier
+
+		for _, backend := range conf.Api.Sync.Backends {
+			bkd, err := backend_impl.NewBackend(ctx, backend.Dsn)
+
+			if err != nil {
+				return fmt.Errorf("failed to create backend for tier %s: %w", backend.Tier, err)
+			}
+
+			defer bkd.Close()
+			bkds = append(bkds, sync.BackendTier{Tier: backend.Tier, Backend: bkd})
+		}
+
+		var validationMiddleware = validationMiddleware(
+			swaggerWithServer(lo.Must(async.GetSwagger()), "/v1/sync"),
+			openapi3_secret_authenticator.OpenAPI3SecretAuthenticator(
+				conf.Secret,
+				openapi3_secret_authenticator.OpenAPI3SecretAuthenticatorConfig{
+					AllowEmpty: true,
+				},
+			),
+		)
+
+		var server, err = sync.NewServer(ctx, bkds)
+
+		if err != nil {
+			return err
+		}
+
+		var strictHandler = sync.NewStrictHandler(server, nil)
+		var handler = sync.HandlerWithOptions(strictHandler, sync.StdHTTPServerOptions{BaseURL: "/v1/sync"})
+		handler = validationMiddleware(handler)
+		handler = client_ip_middleware.ClientIP(handler)
+		mux.Handle("/v1/sync/spec.json", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { json.NewEncoder(w).Encode(lo.Must(sync.GetSwagger())) }))
+		mux.Handle("/v1/sync/docs/", v5emb.New("AGP Sync API", "/v1/sync/spec.json", "/v1/sync/docs/"))
+		mux.Handle("/v1/sync/", handler)
+	}
+
+	if len(conf.Addr) == 0 {
+		conf.Addr = "0.0.0.0:8888"
+	}
+
+	var httpServer = http.Server{
+		Addr:    conf.Addr,
+		Handler: gziphandler.GzipHandler(mux),
+	}
+
+	if conf.Tls != nil {
+		var tlsConf tls.Config
+
+		keypair, err := tls.LoadX509KeyPair(conf.Tls.Cert, conf.Tls.Key)
+
+		if err != nil {
+			return err
+		}
+
+		tlsConf.Certificates = []tls.Certificate{keypair}
+		httpServer.TLSConfig = &tlsConf
+	}
+
+	go func() {
+		<-ctx.Done()
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		httpServer.Shutdown(ctx)
+	}()
+
+	if conf.Tls == nil {
+		logger.Info("server running", "addr", conf.Addr, "protocol", "HTTP")
+		return httpServer.ListenAndServe()
+	} else {
+		logger.Info("server running", "addr", conf.Addr, "protocol", "HTTPS")
+		return httpServer.ListenAndServeTLS("", "")
+	}
+}
+
+func validationMiddleware(
+	swagger *openapi3.T,
+	auth openapi3filter.AuthenticationFunc,
+) func(next http.Handler) http.Handler {
+	return oapi_middleware.OapiRequestValidatorWithOptions(
+		swagger,
+		&oapi_middleware.Options{
+			SilenceServersWarning: true,
+			Options: openapi3filter.Options{
+				AuthenticationFunc: auth,
+			},
+		},
+	)
+}
+
+func swaggerWithServer(swagger *openapi3.T, server string) *openapi3.T {
+	swagger.Servers = openapi3.Servers{&openapi3.Server{URL: server}}
+	return swagger
+}
