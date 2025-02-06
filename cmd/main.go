@@ -25,7 +25,7 @@ func main() {
 		Flags: slogcli.SlogFlags(),
 		Before: cliutils.CombineBeforeFuncs(
 			slogcli.SlogBefore,
-			objstrcli.ObjStrBefore(cnf.WithProvider(env.NewEnvProvider("AGP__OBJSTR"))),
+			objstrcli.ObjStrBefore(cnf.WithProvider(env.NewEnvProvider("OBJSTR"))),
 		),
 		After: cliutils.CombineAfterFuncs(
 			objstrcli.ObjStrAfter,
