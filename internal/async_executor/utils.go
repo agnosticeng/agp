@@ -1,8 +1,6 @@
 package async_executor
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 	"hash/fnv"
 	"net/url"
@@ -16,12 +14,6 @@ func fnv1aHashInt64Sum(s string) int64 {
 	var h = fnv.New64a()
 	h.Write([]byte(s))
 	return int64(h.Sum64())
-}
-
-func sha256HashHexDigest(s string) string {
-	var h = sha256.New()
-	h.Write([]byte(s))
-	return hex.EncodeToString(h.Sum(nil))
 }
 
 func countRows(rows pgx.Rows) (int, error) {

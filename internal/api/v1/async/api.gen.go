@@ -38,6 +38,12 @@ const (
 	SUCCEEDED ExecutionStatus = "SUCCEEDED"
 )
 
+// Defines values for SortBy.
+const (
+	COMPLETEDAT SortBy = "COMPLETED_AT"
+	CREATEDAT   SortBy = "CREATED_AT"
+)
+
 // Execution defines model for Execution.
 type Execution struct {
 	CompletedAt *time.Time             `json:"completed_at,omitempty"`
@@ -62,14 +68,29 @@ type ResultMetadata struct {
 	Rows *int64                 `json:"rows,omitempty"`
 }
 
+// SearchQuery defines model for SearchQuery.
+type SearchQuery = []SearchQueryItem
+
+// SearchQueryItem defines model for SearchQueryItem.
+type SearchQueryItem struct {
+	Limit     *int32             `json:"limit,omitempty"`
+	QueryHash *string            `json:"query_hash,omitempty"`
+	QueryId   string             `json:"query_id"`
+	SortBy    *SortBy            `json:"sort_by,omitempty"`
+	Statuses  *[]ExecutionStatus `json:"statuses,omitempty"`
+}
+
+// SearchResult defines model for SearchResult.
+type SearchResult = [][]Execution
+
+// SortBy defines model for SortBy.
+type SortBy string
+
 // ExecutionId defines model for ExecutionId.
 type ExecutionId = int64
 
 // QueryId defines model for QueryId.
 type QueryId = string
-
-// StaleAfter defines model for StaleAfter.
-type StaleAfter = int64
 
 // PostExecutionsTextBody defines parameters for PostExecutions.
 type PostExecutionsTextBody = string
@@ -91,22 +112,17 @@ type GetExecutionsExecutionIdResultParams struct {
 	QuotaKey *externalRef0.QuotaKey `form:"quota-key,omitempty" json:"quota-key,omitempty"`
 }
 
-// PostRunTextBody defines parameters for PostRun.
-type PostRunTextBody = string
-
-// PostRunParams defines parameters for PostRun.
-type PostRunParams struct {
-	QuotaKey   *externalRef0.QuotaKey `form:"quota-key,omitempty" json:"quota-key,omitempty"`
-	Tier       *externalRef0.Tier     `form:"tier,omitempty" json:"tier,omitempty"`
-	QueryId    *QueryId               `form:"query-id,omitempty" json:"query-id,omitempty"`
-	StaleAfter *StaleAfter            `form:"stale-after,omitempty" json:"stale-after,omitempty"`
+// PostSearchParams defines parameters for PostSearch.
+type PostSearchParams struct {
+	QuotaKey *externalRef0.QuotaKey `form:"quota-key,omitempty" json:"quota-key,omitempty"`
+	Tier     *externalRef0.Tier     `form:"tier,omitempty" json:"tier,omitempty"`
 }
 
 // PostExecutionsTextRequestBody defines body for PostExecutions for text/plain ContentType.
 type PostExecutionsTextRequestBody = PostExecutionsTextBody
 
-// PostRunTextRequestBody defines body for PostRun for text/plain ContentType.
-type PostRunTextRequestBody = PostRunTextBody
+// PostSearchJSONRequestBody defines body for PostSearch for application/json ContentType.
+type PostSearchJSONRequestBody = SearchQuery
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
@@ -120,8 +136,8 @@ type ServerInterface interface {
 	// (GET /executions/{execution_id}/result)
 	GetExecutionsExecutionIdResult(w http.ResponseWriter, r *http.Request, executionId ExecutionId, params GetExecutionsExecutionIdResultParams)
 
-	// (POST /run)
-	PostRun(w http.ResponseWriter, r *http.Request, params PostRunParams)
+	// (POST /search)
+	PostSearch(w http.ResponseWriter, r *http.Request, params PostSearchParams)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -266,8 +282,8 @@ func (siw *ServerInterfaceWrapper) GetExecutionsExecutionIdResult(w http.Respons
 	handler.ServeHTTP(w, r)
 }
 
-// PostRun operation middleware
-func (siw *ServerInterfaceWrapper) PostRun(w http.ResponseWriter, r *http.Request) {
+// PostSearch operation middleware
+func (siw *ServerInterfaceWrapper) PostSearch(w http.ResponseWriter, r *http.Request) {
 
 	var err error
 
@@ -278,7 +294,7 @@ func (siw *ServerInterfaceWrapper) PostRun(w http.ResponseWriter, r *http.Reques
 	r = r.WithContext(ctx)
 
 	// Parameter object where we will unmarshal all parameters from the context
-	var params PostRunParams
+	var params PostSearchParams
 
 	// ------------- Optional query parameter "quota-key" -------------
 
@@ -296,24 +312,8 @@ func (siw *ServerInterfaceWrapper) PostRun(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// ------------- Optional query parameter "query-id" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "query-id", r.URL.Query(), &params.QueryId)
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "query-id", Err: err})
-		return
-	}
-
-	// ------------- Optional query parameter "stale-after" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "stale-after", r.URL.Query(), &params.StaleAfter)
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "stale-after", Err: err})
-		return
-	}
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PostRun(w, r, params)
+		siw.Handler.PostSearch(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -446,7 +446,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc("POST "+options.BaseURL+"/executions", wrapper.PostExecutions)
 	m.HandleFunc("GET "+options.BaseURL+"/executions/{execution_id}", wrapper.GetExecutionsExecutionId)
 	m.HandleFunc("GET "+options.BaseURL+"/executions/{execution_id}/result", wrapper.GetExecutionsExecutionIdResult)
-	m.HandleFunc("POST "+options.BaseURL+"/run", wrapper.PostRun)
+	m.HandleFunc("POST "+options.BaseURL+"/search", wrapper.PostSearch)
 
 	return m
 }
@@ -531,40 +531,22 @@ func (response GetExecutionsExecutionIdResult404Response) VisitGetExecutionsExec
 	return nil
 }
 
-type PostRunRequestObject struct {
-	Params PostRunParams
-	Body   *PostRunTextRequestBody
+type PostSearchRequestObject struct {
+	Params PostSearchParams
+	Body   *PostSearchJSONRequestBody
 }
 
-type PostRunResponseObject interface {
-	VisitPostRunResponse(w http.ResponseWriter) error
+type PostSearchResponseObject interface {
+	VisitPostSearchResponse(w http.ResponseWriter) error
 }
 
-type PostRun200ApplicationoctetStreamResponse struct {
-	Body          io.Reader
-	ContentLength int64
-}
+type PostSearch200JSONResponse SearchResult
 
-func (response PostRun200ApplicationoctetStreamResponse) VisitPostRunResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/octet-stream")
-	if response.ContentLength != 0 {
-		w.Header().Set("Content-Length", fmt.Sprint(response.ContentLength))
-	}
+func (response PostSearch200JSONResponse) VisitPostSearchResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 
-	if closer, ok := response.Body.(io.ReadCloser); ok {
-		defer closer.Close()
-	}
-	_, err := io.Copy(w, response.Body)
-	return err
-}
-
-type PostRun201Response struct {
-}
-
-func (response PostRun201Response) VisitPostRunResponse(w http.ResponseWriter) error {
-	w.WriteHeader(201)
-	return nil
+	return json.NewEncoder(w).Encode(response)
 }
 
 // StrictServerInterface represents all server handlers.
@@ -579,8 +561,8 @@ type StrictServerInterface interface {
 	// (GET /executions/{execution_id}/result)
 	GetExecutionsExecutionIdResult(ctx context.Context, request GetExecutionsExecutionIdResultRequestObject) (GetExecutionsExecutionIdResultResponseObject, error)
 
-	// (POST /run)
-	PostRun(ctx context.Context, request PostRunRequestObject) (PostRunResponseObject, error)
+	// (POST /search)
+	PostSearch(ctx context.Context, request PostSearchRequestObject) (PostSearchResponseObject, error)
 }
 
 type StrictHandlerFunc = strictnethttp.StrictHTTPHandlerFunc
@@ -700,33 +682,32 @@ func (sh *strictHandler) GetExecutionsExecutionIdResult(w http.ResponseWriter, r
 	}
 }
 
-// PostRun operation middleware
-func (sh *strictHandler) PostRun(w http.ResponseWriter, r *http.Request, params PostRunParams) {
-	var request PostRunRequestObject
+// PostSearch operation middleware
+func (sh *strictHandler) PostSearch(w http.ResponseWriter, r *http.Request, params PostSearchParams) {
+	var request PostSearchRequestObject
 
 	request.Params = params
 
-	data, err := io.ReadAll(r.Body)
-	if err != nil {
-		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't read body: %w", err))
+	var body PostSearchJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
 		return
 	}
-	body := PostRunTextRequestBody(data)
 	request.Body = &body
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.PostRun(ctx, request.(PostRunRequestObject))
+		return sh.ssi.PostSearch(ctx, request.(PostSearchRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "PostRun")
+		handler = middleware(handler, "PostSearch")
 	}
 
 	response, err := handler(r.Context(), w, r, request)
 
 	if err != nil {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(PostRunResponseObject); ok {
-		if err := validResponse.VisitPostRunResponse(w); err != nil {
+	} else if validResponse, ok := response.(PostSearchResponseObject); ok {
+		if err := validResponse.VisitPostSearchResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -737,21 +718,23 @@ func (sh *strictHandler) PostRun(w http.ResponseWriter, r *http.Request, params 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/8xXTW/jNhD9K8G0RzpytkEPunkddxG0Nbxx9xQYBlea2NyVSC05SiME+u8FScn6iBzL",
-	"QDfIzRSH82beG87QzxCpNFMSJRkInyHjmqdIqN1q8YRRTkLJ29guhYQQMk57YCB5ihAC1hZbEQMDjT9y",
-	"oTGGkHSODEy0x5Tbsw9Kp5wgBCHp92tgQEWGfok71FCWDD7nqIsW1A+7brDccuJwGr+VG0NayJ3zsiae",
-	"4OyBUB9zZKzFhDuTc2OMVJoquf2cK+J/YnE8VkV88h2LE8FW7v4Rx6Ml0Quz76WsN7uaOTm1ylCTQLdl",
-	"pU6QMN7aLFv5xpxwQiLFJufaO4NIIz/3DGqt9ECsDEQ8imkGmYi+n4maabXTaFyuv2p8gBB+CZr6DiqW",
-	"gor0VW1esorzoYDdznbPzf6VbZ/Vi02NJk/oVDh3zupvJB5z4vacIU75yTQOSq+9eVm2L+A9uJtyiK+T",
-	"SUdVdqi4Cndz4FZ9/YYR2ZD6YOEzoMxTi7NaLG9ul5+Awd2X5dL/ms+W88Vfixtg8Mfs1v9Yf5nPF4ub",
-	"xU0LoOGqx8KL4k3RfxWE6ViF5yrJU2m9V3Bca144ZdS/ZuyVf8FF1/uLSP29HSgH/2GoDbRlc8cr481x",
-	"9FWr2Lv4XwtCM/KWYcIzg8N3MhVSpFbi6dDJ0QwyIEU82f4flN8dLlQ35bpkDsXB41jYauXJqm045Lpf",
-	"Gu+m0GwjwCjXgoq1hfOprjHS6ChwMdgDH7kRUeNyT5T5sSDkg3IFJyixO7OdVIZEdLHS6qm4mJlCRhez",
-	"1S0weERt3NCAq8vp5dSGrjKUPBMQwm+X08sPwNzsd0EEh7nv608ZF5FlmtfvBVgpQ4vGjnUeF/fDvDYm",
-	"QX/SlmzsETdNR5jX741y428gGvqo4sKPSkkoXVKETxRkCRfyQPqxMdx9/vgBkClpvHIfplc91zzLEhE5",
-	"xoJvRvUARvV+C1w68JYmwXP7XVZaZzscUOgTtgRqP/beQKs2nBegQ9X0J1HF4Hp6bTvBCc6CZnafRV3V",
-	"od43gSoipIkhjTwdT2S3Bw+QqXP5eje4y+V7bgOnTVv/Ld6sabyNkL45Va2kHjtOn3rg3G9sygb1Y61c",
-	"rhMIIXi8CridJFBuyv8CAAD//59rwbVQDgAA",
+	"H4sIAAAAAAAC/8xWTW/bOBP+K8G875GJnCbYg2+OrS2Mbb1OnJ4Cw2Ckic1WElVylI0Q6L8vSOrbSqJs",
+	"d4v6ZIrkfDzPM8N5hkDGqUwwIQ3TZ0i54jESKrvynzDISMhkGZqlSGAKKacDMEh4jDAFrE7sRAgMFH7P",
+	"hMIQpqQyZKCDA8bc3H2QKuYEUxAJ/XYJDChP0S1xjwqKgsF1hipvufpu1o0vuzy1fhq7pRlNSiR7ayWQ",
+	"cSyT3XUmif+B+cvWJPHTb5iPM3crUL1kiszea1aKarOLqgVcyRQVCbRbhowICcOdwaqFWsgJT0nE2CBX",
+	"WWcQKOTvvYNKSTUQKwMRjuKLQSqCb+/0miq5V6htrv9X+ABT+J/XKNArUfJK0NfV8YKVmA8FbHd2B64P",
+	"r2y7rI42FeosorfCubGnPiPxkBM39zRxyt5Mo2Z6444XRbtE7sBquY6vk0mHVVYrrvS7rbGV918xIBNS",
+	"39n0GTDJYuNn7a8Wy9VHYHDzZbVy/+az1dz/5C+Awe+zpfuz+TKf+/7CX7QcNFj1UDgSb4zuqyCMxzI8",
+	"l1EWJ8Z66Y4rxXPLjPxLj20cR1hskKvgcF1JZlRErTtLwngopv6RIwgiEQurphAfuBXWBetkcPFhsJR+",
+	"RMJaKtrd52+mJxVd5Y12XcB1nHct8mtFbNk46I503oeup/s6n+2L3N3UhVlH8L5Qhvg74tNh0qqU+Y0/",
+	"u/UXu9mtKZE/P68/+eVyqCK6Ij5Sg3seBihzH4ZemzZK9np5eAiofpM88n+fE+qRzRwjnmocbv2xSERs",
+	"8JkM3RxdqAxIEo92P1TZZdKNPLopV52p1goPQ2HkwKN1++CQ6b46fpl+ZmoWg0wJyjfGnUt1g4FCC4GN",
+	"wVy44loEjckDUeqmD5E8SCs4QZHZme0TqUkEJ2sln/KTmc6T4GS2XgKDR1TaziZwfjY5m5jQZYoJTwVM",
+	"4eJscmY6mBkCbRBePQA6/UltIzJI82pwhLXU5DfnWGfKvBvGtTni9Qe6go29Yoe2EcerwbPYugpETVcy",
+	"zN1ElhAmNinCJ/LSiIukBv2laa87B7s5I5VJ2XQ/TM57pnmaRiKwiHlftew5GNnv3I+1OfGe2wN6YYzt",
+	"cYChj9giqD31/wSu2u4cAR2oJv8RVAwuJ5emE7yBmdeMiO+CruxQvzaAMiCkU00KeTweyG4PHgBT2yf8",
+	"9Ybgnvmf3gxerfB/rq32wDmqA0z+ZdctMhwJ1YthQa3eirutAUCjeqzgzlQEU/Aezz1uHgEotsXfAQAA",
+	"//+J0LSAFBAAAA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

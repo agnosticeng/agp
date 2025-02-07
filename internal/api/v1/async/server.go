@@ -3,11 +3,12 @@ package async
 import (
 	"context"
 	"log/slog"
-	"time"
 
 	"github.com/agnosticeng/agp/internal/async_executor"
 	"github.com/agnosticeng/agp/internal/utils"
 	"github.com/agnosticeng/agp/pkg/client_ip_middleware"
+	"github.com/samber/lo"
+	"github.com/sourcegraph/conc/pool"
 	slogctx "github.com/veqryn/slog-context"
 )
 
@@ -94,52 +95,49 @@ func (srv *Server) GetExecutionsExecutionIdResult(
 	return GetExecutionsExecutionIdResult200ApplicationoctetStreamResponse{Body: cr}, nil
 }
 
-func (srv *Server) PostRun(ctx context.Context, request PostRunRequestObject) (PostRunResponseObject, error) {
-	var (
-		query      = utils.Deref(request.Body)
-		staleAfter = utils.Deref(request.Params.StaleAfter)
-	)
-
-	ex, err := srv.aex.ListByQueryId(
-		ctx,
-		utils.DerefOr(request.Params.QueryId, srv.aex.QueryId(query)),
-		async_executor.ListByQueryIdOptions{
-			Statuses: []async_executor.Status{async_executor.StatusSucceeded},
-			SortBy:   async_executor.SortByCompletedAt,
-			Limit:    1,
-			Query:    query,
-		},
-	)
-
-	if err != nil {
-		return nil, err
+func (srv *Server) PostSearch(ctx context.Context, request PostSearchRequestObject) (PostSearchResponseObject, error) {
+	if request.Body == nil || len(*request.Body) == 0 {
+		return PostSearch200JSONResponse{}, nil
 	}
 
-	if len(ex) == 0 || ex[0].CompletedAt.Add(time.Second*time.Duration(staleAfter)).Before(time.Now()) {
-		_, err = srv.aex.Create(
-			ctx,
-			utils.DerefOr(request.Params.QuotaKey, client_ip_middleware.FromContext(ctx)),
-			query,
-			async_executor.CreateOptions{
-				QueryId: utils.Deref(request.Params.QueryId),
-				Tier:    utils.Deref(request.Params.Tier),
-			},
-		)
+	var p = pool.
+		NewWithResults[[]Execution]().
+		WithErrors().
+		WithContext(ctx).
+		WithCancelOnError().
+		WithMaxGoroutines(3)
 
-		if err != nil {
-			return nil, err
+	for _, item := range *request.Body {
+		var opts = async_executor.ListByQueryIdOptions{
+			QueryHash: utils.Deref(item.QueryHash),
+			Limit:     int(utils.Deref(item.Limit)),
+			SortBy:    async_executor.SortBy(utils.Deref(item.SortBy)),
+			Statuses: lo.Map(
+				utils.Deref(item.Statuses),
+				func(st ExecutionStatus, _ int) async_executor.Status {
+					return async_executor.Status(st)
+				},
+			),
 		}
+
+		p.Go(func(ctx context.Context) ([]Execution, error) {
+			exs, err := srv.aex.ListByQueryId(ctx, item.QueryId, opts)
+
+			if err != nil {
+				return nil, err
+			}
+
+			return lo.Map(exs, func(ex *async_executor.Execution, _ int) Execution {
+				return *ToExecution(ex)
+			}), nil
+		})
 	}
 
-	if len(ex) == 0 {
-		return PostRun201Response{}, nil
-	}
-
-	r, err := srv.aex.GetResultReader(ctx, ex[0])
+	res, err := p.Wait()
 
 	if err != nil {
 		return nil, err
 	}
 
-	return PostRun200ApplicationoctetStreamResponse{Body: r}, nil
+	return PostSearch200JSONResponse(res), nil
 }

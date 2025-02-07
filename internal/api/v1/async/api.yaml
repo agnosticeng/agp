@@ -17,6 +17,48 @@ components:
       scheme: Basic
 
   schemas:
+    SortBy:
+      type: string
+      enum:
+        - CREATED_AT
+        - COMPLETED_AT
+
+    SearchQueryItem:
+      type: object
+      required: 
+        - query_id
+      properties:
+        query_id:
+          type: string
+        query_hash:
+          type: string
+        statuses:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExecutionStatus'
+          default:
+            - SUCCEEDED
+            - FAILED
+        limit:
+          type: integer
+          format: int32
+          default: 3
+        sort_by:
+          $ref: '#/components/schemas/SortBy'
+          default: COMPLETED_AT
+    
+    SearchQuery:
+      type: array
+      items: 
+        $ref: '#/components/schemas/SearchQueryItem'
+
+    SearchResult:
+      type: array
+      items:
+        type: array
+        items:
+          $ref: '#/components/schemas/Execution'
+
     ExecutionStatus:
       type: string
       enum:
@@ -142,23 +184,20 @@ paths:
                 $ref: '../common.yaml#/components/schemas/Result'
         "404": {}
 
-  /run:
+  /search:
     post:
       parameters:
         - $ref: '../common.yaml#/components/parameters/QuotaKey'
         - $ref: '../common.yaml#/components/parameters/Tier'
-        - $ref: '#/components/parameters/QueryId'
-        - $ref: '#/components/parameters/StaleAfter'
       requestBody:
         required: true
         content:
-          text/plain:
+          application/json:
             schema:
-              type: string
+              $ref: "#/components/schemas/SearchQuery"
       responses:
         "200":
           content:
-            application/octet-stream:
+            application/json:
               schema:
-                $ref: '../common.yaml#/components/schemas/Result'
-        "201": {}
+                $ref: '#/components/schemas/SearchResult'

@@ -7,6 +7,7 @@ import (
 
 	"github.com/agnosticeng/agp/internal/async_executor"
 	"github.com/agnosticeng/agp/internal/process/bookkeeper"
+	"github.com/agnosticeng/agp/internal/query_hasher"
 	"github.com/agnosticeng/cnf"
 	"github.com/agnosticeng/cnf/providers/env"
 	"github.com/agnosticeng/cnf/providers/file"
@@ -42,7 +43,7 @@ func Command() *cli.Command {
 				return err
 			}
 
-			aex, err := async_executor.NewAsyncExecutor(sigctx, cfg.AsyncExecutorConfig)
+			aex, err := async_executor.NewAsyncExecutor(sigctx, query_hasher.SHA256QueryHasher, cfg.AsyncExecutorConfig)
 
 			if err != nil {
 				return err

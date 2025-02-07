@@ -9,6 +9,7 @@ import (
 	"net/url"
 
 	"github.com/agnosticeng/agp/internal/async_executor/queries"
+	"github.com/agnosticeng/agp/internal/query_hasher"
 	"github.com/agnosticeng/objstr"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -25,14 +26,23 @@ type AsyncExecutorConfig struct {
 }
 
 type AsyncExecutor struct {
-	conf   AsyncExecutorConfig
-	logger *slog.Logger
-	pool   *pgxpool.Pool
-	os     *objstr.ObjectStore
+	conf        AsyncExecutorConfig
+	logger      *slog.Logger
+	pool        *pgxpool.Pool
+	os          *objstr.ObjectStore
+	queryHasher query_hasher.QuerHashFunc
 }
 
-func NewAsyncExecutor(ctx context.Context, conf AsyncExecutorConfig) (*AsyncExecutor, error) {
+func NewAsyncExecutor(
+	ctx context.Context,
+	queryHasher query_hasher.QuerHashFunc,
+	conf AsyncExecutorConfig,
+) (*AsyncExecutor, error) {
 	var logger = slogctx.FromCtx(ctx)
+
+	if queryHasher == nil {
+		return nil, fmt.Errorf("a query hasher must be provider")
+	}
 
 	_, err := url.Parse(conf.ResultStoragePrefix)
 
@@ -58,11 +68,16 @@ func NewAsyncExecutor(ctx context.Context, conf AsyncExecutorConfig) (*AsyncExec
 	}
 
 	return &AsyncExecutor{
-		conf:   conf,
-		logger: logger,
-		pool:   pool,
-		os:     objstr.FromContext(ctx),
+		conf:        conf,
+		logger:      logger,
+		pool:        pool,
+		os:          objstr.FromContext(ctx),
+		queryHasher: queryHasher,
 	}, nil
+}
+
+func (aex *AsyncExecutor) GetQueryHasher() query_hasher.QuerHashFunc {
+	return aex.queryHasher
 }
 
 func (aex *AsyncExecutor) GetById(ctx context.Context, id int64) (*Execution, error) {
@@ -100,10 +115,10 @@ func (aex *AsyncExecutor) GetResultReader(ctx context.Context, ex *Execution) (i
 }
 
 type ListByQueryIdOptions struct {
-	Statuses []Status
-	SortBy   SortBy
-	Limit    int
-	Query    string // if not empty, will also filter by query hash
+	Statuses  []Status
+	SortBy    SortBy
+	Limit     int
+	QueryHash string
 }
 
 func (aex *AsyncExecutor) ListByQueryId(ctx context.Context, queryId string, opts ListByQueryIdOptions) ([]*Execution, error) {
@@ -125,18 +140,12 @@ func (aex *AsyncExecutor) ListByQueryId(ctx context.Context, queryId string, opt
 		opts.Limit = max(opts.Limit, 100)
 	}
 
-	var queryHash string
-
-	if len(opts.Query) > 0 {
-		queryHash = sha256HashHexDigest(opts.Query)
-	}
-
 	rows, err := queries.Query(ctx, aex.pool, "list_by_query_id.sql", pgx.NamedArgs{
 		"query_id":   queryId,
 		"statuses":   opts.Statuses,
 		"sort_by":    opts.SortBy,
 		"limit":      opts.Limit,
-		"query_hash": queryHash,
+		"query_hash": opts.QueryHash,
 	})
 
 	if err != nil {
@@ -168,7 +177,7 @@ func (aex *AsyncExecutor) Create(
 		return nil, fmt.Errorf("query must not be empty")
 	}
 
-	var queryHash = sha256HashHexDigest(query)
+	var queryHash = aex.queryHasher(query)
 
 	if len(opts.QueryId) == 0 {
 		opts.QueryId = queryHash
@@ -225,8 +234,4 @@ func (aex *AsyncExecutor) Create(
 func (aex *AsyncExecutor) Close() error {
 	aex.pool.Close()
 	return nil
-}
-
-func (aex *AsyncExecutor) QueryId(query string) string {
-	return sha256HashHexDigest(query)
 }
