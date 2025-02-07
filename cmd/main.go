@@ -8,6 +8,7 @@ import (
 	"github.com/agnosticeng/agp/cmd/bookkeeper"
 	"github.com/agnosticeng/agp/cmd/migrate"
 	"github.com/agnosticeng/agp/cmd/server"
+	"github.com/agnosticeng/agp/cmd/signer"
 	"github.com/agnosticeng/agp/cmd/standalone"
 	"github.com/agnosticeng/agp/cmd/worker"
 	"github.com/agnosticeng/cliutils"
@@ -37,6 +38,7 @@ func main() {
 			bookkeeper.Command(),
 			server.Command(),
 			standalone.Command(),
+			signer.Command(),
 		},
 	}
 

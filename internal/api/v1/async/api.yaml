@@ -131,9 +131,17 @@ components:
       schema:
         type: string
 
-    StaleAfter:
+    Signature:
       in: query
-      name: stale-after
+      name: signature
+      required: true
+      schema:
+        type: string
+
+    Expiration:
+      in: query
+      name: expiration
+      required: true
       schema:
         type: integer
         format: int64
@@ -142,8 +150,8 @@ paths:
   /executions:
     post:
       parameters:
-        - $ref: '../common.yaml#/components/parameters/QuotaKey'
         - $ref: '../common.yaml#/components/parameters/Tier'
+        - $ref: '../common.yaml#/components/parameters/QuotaKey'
         - $ref: '#/components/parameters/QueryId'
       requestBody:
         required: true
@@ -161,6 +169,7 @@ paths:
   /executions/{execution_id}:
     get:
       parameters:
+        - $ref: '../common.yaml#/components/parameters/Tier'
         - $ref: '../common.yaml#/components/parameters/QuotaKey'
         - $ref: "#/components/parameters/ExecutionId"
       responses:
@@ -173,9 +182,14 @@ paths:
 
   /executions/{execution_id}/result:
     get:
+      security:
+        - {}
       parameters:
+        - $ref: '../common.yaml#/components/parameters/Tier'
         - $ref: '../common.yaml#/components/parameters/QuotaKey'
-        - $ref: "#/components/parameters/ExecutionId"
+        - $ref: '#/components/parameters/ExecutionId'
+        - $ref: '#/components/parameters/Signature'
+        - $ref: '#/components/parameters/Expiration'
       responses:
         "200":
           content:
@@ -187,8 +201,8 @@ paths:
   /search:
     post:
       parameters:
-        - $ref: '../common.yaml#/components/parameters/QuotaKey'
         - $ref: '../common.yaml#/components/parameters/Tier'
+        - $ref: '../common.yaml#/components/parameters/QuotaKey'
       requestBody:
         required: true
         content:

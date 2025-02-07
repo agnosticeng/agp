@@ -1,4 +1,4 @@
-package openapi3_secret_authenticator
+package openapi3_auth
 
 import (
 	"context"
@@ -7,11 +7,11 @@ import (
 	"github.com/getkin/kin-openapi/openapi3filter"
 )
 
-type OpenAPI3SecretAuthenticatorConfig struct {
+type OpenAPI3SecretConfig struct {
 	AllowEmpty bool
 }
 
-func OpenAPI3SecretAuthenticator(secret string, conf OpenAPI3SecretAuthenticatorConfig) openapi3filter.AuthenticationFunc {
+func OpenAPI3Secret(secret string, conf OpenAPI3SecretConfig) openapi3filter.AuthenticationFunc {
 	return func(ctx context.Context, ai *openapi3filter.AuthenticationInput) error {
 		if ai.SecuritySchemeName != "Secret" {
 			return fmt.Errorf("invalid security scheme: %s", ai.SecuritySchemeName)

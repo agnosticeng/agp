@@ -13,8 +13,9 @@ import (
 	"github.com/agnosticeng/agp/internal/api/v1/sync"
 	"github.com/agnosticeng/agp/internal/async_executor"
 	backend_impl "github.com/agnosticeng/agp/internal/backend/impl"
+	"github.com/agnosticeng/agp/internal/signer"
 	"github.com/agnosticeng/agp/pkg/client_ip_middleware"
-	"github.com/agnosticeng/agp/pkg/openapi3_secret_authenticator"
+	"github.com/agnosticeng/agp/pkg/openapi3_auth"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"
 	oapi_middleware "github.com/oapi-codegen/nethttp-middleware"
@@ -60,6 +61,8 @@ func Server(ctx context.Context, aex *async_executor.AsyncExecutor, conf ServerC
 		mux    = http.NewServeMux()
 	)
 
+	var sig = signer.HMAC256Signer([]byte(conf.Secret))
+
 	if conf.Api.Async.Enable {
 		if aex == nil {
 			return fmt.Errorf("AsyncExecutor must be provided for async API to work")
@@ -67,12 +70,12 @@ func Server(ctx context.Context, aex *async_executor.AsyncExecutor, conf ServerC
 
 		var validationMiddleware = validationMiddleware(
 			swaggerWithServer(lo.Must(async.GetSwagger()), "/v1/async"),
-			openapi3_secret_authenticator.OpenAPI3SecretAuthenticator(
+			openapi3_auth.OpenAPI3Secret(
 				conf.Secret,
-				openapi3_secret_authenticator.OpenAPI3SecretAuthenticatorConfig{},
+				openapi3_auth.OpenAPI3SecretConfig{},
 			),
 		)
-		var strictHandler = async.NewStrictHandler(async.NewServer(ctx, aex), nil)
+		var strictHandler = async.NewStrictHandler(async.NewServer(ctx, sig, aex), nil)
 		var handler = async.HandlerWithOptions(strictHandler, async.StdHTTPServerOptions{BaseURL: "/v1/async"})
 		handler = validationMiddleware(handler)
 		handler = client_ip_middleware.ClientIP(handler)
@@ -99,9 +102,9 @@ func Server(ctx context.Context, aex *async_executor.AsyncExecutor, conf ServerC
 
 		var validationMiddleware = validationMiddleware(
 			swaggerWithServer(lo.Must(async.GetSwagger()), "/v1/sync"),
-			openapi3_secret_authenticator.OpenAPI3SecretAuthenticator(
+			openapi3_auth.OpenAPI3Secret(
 				conf.Secret,
-				openapi3_secret_authenticator.OpenAPI3SecretAuthenticatorConfig{
+				openapi3_auth.OpenAPI3SecretConfig{
 					AllowEmpty: true,
 				},
 			),

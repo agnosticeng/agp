@@ -30,12 +30,12 @@ type AsyncExecutor struct {
 	logger      *slog.Logger
 	pool        *pgxpool.Pool
 	os          *objstr.ObjectStore
-	queryHasher query_hasher.QuerHashFunc
+	queryHasher query_hasher.QueryHasher
 }
 
 func NewAsyncExecutor(
 	ctx context.Context,
-	queryHasher query_hasher.QuerHashFunc,
+	queryHasher query_hasher.QueryHasher,
 	conf AsyncExecutorConfig,
 ) (*AsyncExecutor, error) {
 	var logger = slogctx.FromCtx(ctx)
@@ -76,7 +76,7 @@ func NewAsyncExecutor(
 	}, nil
 }
 
-func (aex *AsyncExecutor) GetQueryHasher() query_hasher.QuerHashFunc {
+func (aex *AsyncExecutor) GetQueryHasher() query_hasher.QueryHasher {
 	return aex.queryHasher
 }
 

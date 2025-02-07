@@ -2,9 +2,13 @@ package async
 
 import (
 	"context"
+	"encoding/hex"
+	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/agnosticeng/agp/internal/async_executor"
+	"github.com/agnosticeng/agp/internal/signer"
 	"github.com/agnosticeng/agp/internal/utils"
 	"github.com/agnosticeng/agp/pkg/client_ip_middleware"
 	"github.com/samber/lo"
@@ -14,15 +18,18 @@ import (
 
 type Server struct {
 	logger *slog.Logger
+	signer signer.Signer
 	aex    *async_executor.AsyncExecutor
 }
 
 func NewServer(
 	ctx context.Context,
+	signer signer.Signer,
 	aex *async_executor.AsyncExecutor,
 ) *Server {
 	return &Server{
 		logger: slogctx.FromCtx(ctx),
+		signer: signer,
 		aex:    aex,
 	}
 }
@@ -70,6 +77,16 @@ func (srv *Server) GetExecutionsExecutionIdResult(
 	ctx context.Context,
 	request GetExecutionsExecutionIdResultRequestObject,
 ) (GetExecutionsExecutionIdResultResponseObject, error) {
+	var sig = srv.signer([]byte(fmt.Sprintf("%d%d", request.ExecutionId, request.Params.Expiration)))
+
+	if hex.EncodeToString(sig) != request.Params.Signature {
+		return nil, fmt.Errorf("invalid signature")
+	}
+
+	if time.Unix(request.Params.Expiration, 0).Before(time.Now()) {
+		return nil, fmt.Errorf("signed url is expired")
+	}
+
 	ex, err := srv.aex.GetById(ctx, request.ExecutionId)
 
 	if err != nil {
