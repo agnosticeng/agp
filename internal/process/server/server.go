@@ -19,6 +19,7 @@ import (
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"
 	oapi_middleware "github.com/oapi-codegen/nethttp-middleware"
+	"github.com/rs/cors"
 	"github.com/samber/lo"
 	"github.com/swaggest/swgui/v5emb"
 	slogctx "github.com/veqryn/slog-context"
@@ -49,10 +50,12 @@ type TLSConfig struct {
 }
 
 type ServerConfig struct {
-	Addr   string
-	Secret string
-	Api    APIConfig
-	Tls    *TLSConfig
+	Addr        string
+	Secret      string
+	Api         APIConfig
+	Tls         *TLSConfig
+	DisableCors bool
+	DisableGzip bool
 }
 
 func Server(ctx context.Context, aex *async_executor.AsyncExecutor, conf ServerConfig) error {
@@ -129,9 +132,19 @@ func Server(ctx context.Context, aex *async_executor.AsyncExecutor, conf ServerC
 		conf.Addr = "0.0.0.0:8888"
 	}
 
+	var h http.Handler = mux
+
+	if !conf.DisableGzip {
+		h = gziphandler.GzipHandler(h)
+	}
+
+	if !conf.DisableCors {
+		h = cors.Default().Handler(h)
+	}
+
 	var httpServer = http.Server{
 		Addr:    conf.Addr,
-		Handler: gziphandler.GzipHandler(mux),
+		Handler: h,
 	}
 
 	if conf.Tls != nil {

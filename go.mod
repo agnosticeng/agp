@@ -18,6 +18,7 @@ require (
 	github.com/oapi-codegen/nethttp-middleware v1.0.2
 	github.com/oapi-codegen/oapi-codegen/v2 v2.4.1
 	github.com/oapi-codegen/runtime v1.1.1
+	github.com/rs/cors v1.11.1
 	github.com/samber/lo v1.49.1
 	github.com/sourcegraph/conc v0.3.0
 	github.com/swaggest/swgui v1.8.2
