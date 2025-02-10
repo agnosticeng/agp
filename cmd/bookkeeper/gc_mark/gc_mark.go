@@ -1,14 +1,11 @@
-package bookkeeper
+package gc_mark
 
 import (
 	"os"
 	"os/signal"
 	"syscall"
 
-	"github.com/agnosticeng/agp/cmd/bookkeeper/gc_cleanup"
-	"github.com/agnosticeng/agp/cmd/bookkeeper/gc_mark"
 	"github.com/agnosticeng/agp/internal/async_executor"
-	"github.com/agnosticeng/agp/internal/process/bookkeeper"
 	"github.com/agnosticeng/agp/internal/query_hasher"
 	"github.com/agnosticeng/cnf"
 	"github.com/agnosticeng/cnf/providers/env"
@@ -19,16 +16,12 @@ import (
 
 type config struct {
 	async_executor.AsyncExecutorConfig
-	bookkeeper.BookkeeperConfig
+	async_executor.GCMarkOptions
 }
 
 func Command() *cli.Command {
 	return &cli.Command{
-		Name: "bookkeeper",
-		Subcommands: []*cli.Command{
-			gc_mark.Command(),
-			gc_cleanup.Command(),
-		},
+		Name: "gc-mark",
 		Action: func(ctx *cli.Context) error {
 			var (
 				sigctx, sigctxcancel = signal.NotifyContext(ctx.Context, os.Interrupt, syscall.SIGTERM)
@@ -56,7 +49,8 @@ func Command() *cli.Command {
 			}
 
 			defer aex.Close()
-			return bookkeeper.Bookkeeper(sigctx, aex, identity.String(), cfg.BookkeeperConfig)
+			_, err = aex.GCMark(sigctx, identity.String(), cfg.GCMarkOptions)
+			return err
 		},
 	}
 }

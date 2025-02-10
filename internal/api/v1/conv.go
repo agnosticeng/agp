@@ -14,14 +14,14 @@ func ToResult(bkdres *backend.Result) *Result {
 		meta []Column
 	)
 
-	res.Rows = &bkdres.NumRows
+	res.Rows = &bkdres.Rows
 
-	for _, column := range bkdres.Schema {
+	for _, column := range bkdres.Meta {
 		meta = append(meta, Column(column))
 	}
 
 	res.Meta = &meta
-	res.Data = &bkdres.Rows
+	res.Data = &bkdres.Data
 	return &res
 }
 

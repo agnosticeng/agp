@@ -71,6 +71,7 @@ func loop(
 			}
 
 			if err != nil {
+				logger.Error(err.Error())
 				return err
 			}
 

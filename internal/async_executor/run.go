@@ -102,8 +102,8 @@ func (aex *AsyncExecutor) processResult(
 
 	var md ResultMetadata
 
-	md.NumRows = bkdRes.NumRows
-	md.Schema = bkdRes.Schema
+	md.NumRows = bkdRes.Rows
+	md.Schema = bkdRes.Meta
 	md.StoragePath = path
 	md.StorageCompression = aex.conf.ResultStorageCompression
 

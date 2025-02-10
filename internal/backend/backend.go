@@ -49,9 +49,9 @@ type Column struct {
 type Schema []Column
 
 type Result struct {
-	Schema  Schema           `json:"schema"`
-	NumRows int64            `json:"num_rows"`
-	Rows    []map[string]any `json:"rows"`
+	Meta Schema           `json:"meta"`
+	Rows int64            `json:"rows"`
+	Data []map[string]any `json:"data"`
 }
 
 type Backend interface {

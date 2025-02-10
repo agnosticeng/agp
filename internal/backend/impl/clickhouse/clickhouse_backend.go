@@ -84,12 +84,12 @@ func (b *ClickhouseBackend) ExecuteQuery(ctx context.Context, query string, optf
 	}
 
 	var res = backend.Result{
-		NumRows: int64(len(rows)),
-		Rows:    rows,
+		Rows: int64(len(rows)),
+		Data: rows,
 	}
 
 	for i := 0; i < len(columnNames); i++ {
-		res.Schema = append(res.Schema, backend.Column{
+		res.Meta = append(res.Meta, backend.Column{
 			Name: columnNames[i],
 			Type: columnTypes[i].DatabaseTypeName(),
 		})
