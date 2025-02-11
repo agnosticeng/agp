@@ -137,7 +137,7 @@ func (aex *AsyncExecutor) ListByQueryId(ctx context.Context, queryId string, opt
 	if opts.Limit <= 0 {
 		opts.Limit = 3
 	} else {
-		opts.Limit = max(opts.Limit, 100)
+		opts.Limit = min(opts.Limit, 100)
 	}
 
 	rows, err := queries.Query(ctx, aex.pool, "list_by_query_id.sql", pgx.NamedArgs{
