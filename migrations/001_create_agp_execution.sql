@@ -19,7 +19,7 @@ create table agp_execution (
   error text
 );
 
--- enum-like contraint
+-- enum-like constraint
 alter table agp_execution add constraint const_agp_execution_status 
 check (
   status in (

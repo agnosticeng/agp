@@ -62,10 +62,17 @@ type Execution struct {
 // ExecutionStatus defines model for ExecutionStatus.
 type ExecutionStatus string
 
+// Query defines model for Query.
+type Query struct {
+	Secrets *[]Secret `json:"secrets,omitempty"`
+	Sql     string    `json:"sql"`
+}
+
 // ResultMetadata defines model for ResultMetadata.
 type ResultMetadata struct {
-	Meta *[]externalRef0.Column `json:"meta,omitempty"`
-	Rows *int64                 `json:"rows,omitempty"`
+	Duration *int64                 `json:"duration,omitempty"`
+	Meta     *[]externalRef0.Column `json:"meta,omitempty"`
+	Rows     *int64                 `json:"rows,omitempty"`
 }
 
 // SearchQuery defines model for SearchQuery.
@@ -82,6 +89,12 @@ type SearchQueryItem struct {
 
 // SearchResult defines model for SearchResult.
 type SearchResult = [][]Execution
+
+// Secret defines model for Secret.
+type Secret struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
 
 // SortBy defines model for SortBy.
 type SortBy string
@@ -127,6 +140,9 @@ type PostSearchParams struct {
 	Tier     *externalRef0.Tier     `form:"tier,omitempty" json:"tier,omitempty"`
 	QuotaKey *externalRef0.QuotaKey `form:"quota-key,omitempty" json:"quota-key,omitempty"`
 }
+
+// PostExecutionsJSONRequestBody defines body for PostExecutions for application/json ContentType.
+type PostExecutionsJSONRequestBody = Query
 
 // PostExecutionsTextRequestBody defines body for PostExecutions for text/plain ContentType.
 type PostExecutionsTextRequestBody = PostExecutionsTextBody
@@ -502,8 +518,9 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 }
 
 type PostExecutionsRequestObject struct {
-	Params PostExecutionsParams
-	Body   *PostExecutionsTextRequestBody
+	Params   PostExecutionsParams
+	JSONBody *PostExecutionsJSONRequestBody
+	TextBody *PostExecutionsTextRequestBody
 }
 
 type PostExecutionsResponseObject interface {
@@ -649,14 +666,24 @@ func (sh *strictHandler) PostExecutions(w http.ResponseWriter, r *http.Request, 
 	var request PostExecutionsRequestObject
 
 	request.Params = params
+	if strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
 
-	data, err := io.ReadAll(r.Body)
-	if err != nil {
-		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't read body: %w", err))
-		return
+		var body PostExecutionsJSONRequestBody
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+			return
+		}
+		request.JSONBody = &body
 	}
-	body := PostExecutionsTextRequestBody(data)
-	request.Body = &body
+	if strings.HasPrefix(r.Header.Get("Content-Type"), "text/plain") {
+		data, err := io.ReadAll(r.Body)
+		if err != nil {
+			sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't read body: %w", err))
+			return
+		}
+		body := PostExecutionsTextRequestBody(data)
+		request.TextBody = &body
+	}
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.PostExecutions(ctx, request.(PostExecutionsRequestObject))
@@ -768,24 +795,24 @@ func (sh *strictHandler) PostSearch(w http.ResponseWriter, r *http.Request, para
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/8xX31PjNhD+V5htHwUOB9OHvIXg3jC9o4FwT0wmI+wl0Z0t+aQ1xcP4f+9IcvwjMcQp",
-	"bQeecLTaH9/37Xr9ApFKMyVRkoHxC2Rc8xQJtXsKnzHKSSh5FdtHIWEMGac1MJA8RRgDbiyWIgYGGn/m",
-	"QmMMY9I5MjDRGlNu7z4qnXKCMQhJv50DAyoy9I+4Qg1lySB8zoTm1lsd7WeOumiHqy3eG+zGem7VtRXJ",
-	"PR67ohq/lRtDWsiV8zIXK8kp1/iaH1MbvJXwruNIpamSy5tcEf8Di9fTVMSPf2ABg9zdCdSvuSJ79paX",
-	"cnPY1YaTjVYZahLojqykEiSMl5aEFh0xJzwmkWJDycY7g0gjP/QOaq10T64MRDxICAwyEf04MGqm1Uqj",
-	"cbX+qvERxvBL0PRRUKEUVKDPNuYlqzDvS9idLNfcrN849lXtHGo0eUL70rl1Vl+ReMyJ23uGOOV7y6iZ",
-	"nnvzsmxL+R5ck9T5dSrpsMpqxVVxFzW26uE7RgRuBnSDjV8AZZ7aOLPw+vLq+jMwuP12fe3/m06up+GX",
-	"8BIY/D658v/Mv02nYXgZXrYCNFhtobAj3hT9r4IwHcrwVCV5Kq33KhzXmheOGfWXGTqRdrCYI9fR+mYj",
-	"mUEZte5cEaZ9OW2b7ECQiFQ4NcX4yJ2wzlingrNPva30HgkbpWn5UOwtT2m6KBrt+oTrPO9b5NeKWLBh",
-	"0O3ofBu6Ld3X9Sxe5e62bsw6g8NS6eNvh0+PSatTprfh5C68XE7ubIv8+XX2Jawe+zqiK+IdNfjXQw9l",
-	"/oe+t00bJXe9Mu4DantI7sR/KAjNwGGOCc8M9o/+VEiRWnxGfTcHNyoDUsST5bs6uyq6kUe35M1kqrXC",
-	"41hYOfBk1jbsc72tjg8zz2zPYpRrQcXchvOlzjHS6CBwOdgLF9yIqHG5Jsr89iHko3KCE5TYk8lKKkMi",
-	"Oppp9VwcTUwho6PJ7AoYPKE2bjeB05PRycimrjKUPBMwhrOT0YmdYHaVdUkE9Rrr9aeMy8gizTfrL8yU",
-	"obCxY51d+b4f18YkaG9gJRtqXu9/A65sNtpy4TsQDV2ouPAbmSSUrijCZwqyhAtZg/7attfdV/2ekSlZ",
-	"Dd1Po9Mt1zzLEhE5xILvRm0FGDjv/B9rcxK8tD8zSutshT0MfcYWQe1vl4/HVTs7z1cH2dF/hCyD89G5",
-	"HRx7IA6ajfIgpKuB9sHx3m/efNYN8l1/lB5IpYoI6diQRp4Op7T78ujS2sxYi3u5cDQbt4u8Pdn8vvK/",
-	"M/fmqPrnqm9vzoNG2ehfDt0ixxPUpqV+6d0vLAAG9dMG7lwnMIbg6TTg9m0G5aL8OwAA///ChxFHoxEA",
-	"AA==",
+	"H4sIAAAAAAAC/8xYXU/jOBf+K+i872UgZUB70btSsqNqZ7qFMleoqkxyaD0kcbBPWCKU/76yneabNhUz",
+	"K+aqGR+fj+c557HNG/giSkSMMSkYv0HCJIuQUJov7xX9lLiIZ4H+5DGMIWG0BQdiFiGMAXcWax6AAxKf",
+	"Uy4xgDHJFB1Q/hYjpvc+ChkxgjHwmP64BAcoS9B+4gYl5LkD3mvCJdPeymjPKcqsHq60+GiwG+25Vlcr",
+	"kvk8NUVVfgs3iiSPN8bLkm9iRqnE9/yo0mBfwl3HvogiEa9vUkHsL8zeT1MQO33CDAa5u+Mo33NFem2f",
+	"l3y32OwN0zZSJCiJo1nSLRUiYbDWJNToCBjhKfEIK0p23h3wJbJj96CUQvbk6gAPBjWCAwn3n46Mmkix",
+	"kahMrf+X+Ahj+J9bzZFboOQWoC925rlTYN6XsFlZb5na7lm2VXUWJao0pEPp3Bqr70gsYMT0PkWM0oNl",
+	"lEwvrXme11v5HsyQlPk1Kmmw6pQdV8RdldiKh5/oExgNaAYbvwHGaaTjLLz59Wz+FRy4/TGf21/TyXzq",
+	"ffOuwYE/JzP7Y/ljOvW8a++6FqDC6mbHQLNnFfoSrQZywuggKEtjrx0WEZiULDOgPof9M1jHTBv1ld/i",
+	"qJNmkFYCOaC5I7ROBpVUtOtUhGkU91UmxT9qqLx2Klsik/62RH8gyOWeGWHUl1PbpINYyCNuRiPAR2am",
+	"5MJpVHDxpRe6j8yjEpLWD9nB8oSkq6waxILiXZ73tU4u23vlDIOuM7Rt6FoNWdazepe721JlygyOS6WP",
+	"vy6fZq46ND5hv2y+sDDFw/NmT0hr3FuhpaKmNtNbb3LnXa8nd1pm/v6++OYVn32q0pydTvb2iO1J3/7H",
+	"oezN9sK4L/v2QdOJ/5ARqoGagSFLFPYfnxGPeaTxGfXtHKwPDpAgFq4/JChF0VVXtpSStaSPBQHXXcjC",
+	"Rd2wz3W7KT+NjGqpQD+VnLKlDmdLrWbG5KA3XDHF/crlliixNzgePwrTcJxCvTLZxEIR908WUrxmJxOV",
+	"xf7JZDHT04JSmaMGzs9GZyOdukgwZgmHMVycjc60cOrngEnCLZ8Ctv+EMhlppNnuCQELocir7JzGe+O+",
+	"H9fKxK3fYnNnqHl5hx6wZfcqyFd2AlHRlQgye6uNCWNTFEuSkPumLPensqdxdW/e1xz2/DPM4iu5Sch4",
+	"a3fPrbv5brD3vUTExXnxZXT+y9KrSbX959R5dd/qz71cO9tgD8tfsUZy/Q35+fiuZ2c5byA7+k3IOnA5",
+	"utTicwBit7rZH4V0IYqfHO/D5tXzepDv8o8DR1IpfEI6VSSRRcMpbR5ATVornda45ytDszLXqP3qaK9a",
+	"/zlzv0nu6pf+QVI2+sWha+RYguq0lAfn/UoDoFC+7OBOZQhjcF/OXaZPRMhX+b8BAAD//zQcNr4rEwAA",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

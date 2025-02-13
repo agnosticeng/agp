@@ -37,26 +37,37 @@ func (aex *AsyncExecutor) Run(
 		return false, nil
 	}
 
-	ctx, cancel := context.WithCancel(ctx)
+	var (
+		t0               = time.Now()
+		queryCtx, cancel = context.WithCancel(ctx)
+	)
+
 	defer cancel()
 
-	bkdRes, err := bkd.ExecuteQuery(ctx, ex.Query, backend.WithProgressHandler(func(p backend.Progress) {
-		ex, err := aex.heartbeatExecution(ctx, ex.Id, identity, opts.MaxHeartbeatInterval, p)
+	bkdRes, err := bkd.ExecuteQuery(
+		queryCtx,
+		ex.Query,
+		backend.WithParameters(ex.Secrets),
+		backend.WithQuotaKey(ex.CreatedBy),
+		backend.WithProgressHandler(func(p backend.Progress) {
+			ex, err := aex.heartbeatExecution(queryCtx, ex.Id, identity, opts.MaxHeartbeatInterval, p)
 
-		if err != nil || ex.Status != StatusRunning {
-			if err != nil {
-				aex.logger.Error(err.Error())
+			if err != nil || ex.Status != StatusRunning {
+				if err != nil {
+					aex.logger.Error(err.Error())
+				}
+
+				cancel()
 			}
-
-			cancel()
-		}
-	}))
+		}))
 
 	if err != nil {
 		return true, aex.completeExecution(ctx, ex.Id, identity, StatusFailed, nil, err.Error())
 	}
 
-	js, err := aex.processResult(ctx, bkdRes, ex)
+	var duration = time.Since(t0)
+
+	js, err := aex.processResult(ctx, duration, bkdRes, ex)
 
 	if err != nil {
 		return true, aex.completeExecution(ctx, ex.Id, identity, StatusFailed, nil, err.Error())
@@ -67,6 +78,7 @@ func (aex *AsyncExecutor) Run(
 
 func (aex *AsyncExecutor) processResult(
 	ctx context.Context,
+	duration time.Duration,
 	bkdRes *backend.Result,
 	ex *Execution,
 ) (json.RawMessage, error) {
@@ -102,6 +114,7 @@ func (aex *AsyncExecutor) processResult(
 
 	var md ResultMetadata
 
+	md.Duration = duration
 	md.NumRows = bkdRes.Rows
 	md.Schema = bkdRes.Meta
 	md.StoragePath = path

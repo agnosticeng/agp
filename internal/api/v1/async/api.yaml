@@ -59,6 +59,29 @@ components:
         items:
           $ref: '#/components/schemas/Execution'
 
+    Secret:
+      type: object
+      required: 
+        - key
+        - value
+      properties:
+        key:
+          type: string
+        value:
+          type: string
+
+    Query:
+      type: object
+      required:
+        - sql
+      properties:
+        sql:
+          type: string
+        secrets:
+          type: array
+          items:
+            $ref: '#/components/schemas/Secret'
+
     ExecutionStatus:
       type: string
       enum:
@@ -115,6 +138,9 @@ components:
         rows:
           type: integer
           format: int64
+        duration:
+          type: integer
+          format: int64
 
   parameters:
     ExecutionId:
@@ -159,6 +185,10 @@ paths:
           text/plain:
             schema:
               type: string
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Query"
+
       responses:
         "201":
           content:

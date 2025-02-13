@@ -8,6 +8,7 @@ import (
 type RunOptions struct {
 	QuotaKey        string
 	ProgressHandler func(Progress)
+	Parameters      map[string]string
 }
 
 type RunOption func(*RunOptions)
@@ -38,6 +39,12 @@ func WithProgressHandler(h func(Progress)) RunOption {
 func WithQuotaKey(key string) RunOption {
 	return func(ro *RunOptions) {
 		ro.QuotaKey = key
+	}
+}
+
+func WithParameters(params map[string]string) RunOption {
+	return func(ro *RunOptions) {
+		ro.Parameters = params
 	}
 }
 

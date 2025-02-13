@@ -1,0 +1,1 @@
+alter table agp_execution add column secrets jsonb;

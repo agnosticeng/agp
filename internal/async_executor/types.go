@@ -33,6 +33,7 @@ const (
 type ResultMetadata struct {
 	Schema             backend.Schema    `json:"schema"`
 	NumRows            int64             `json:"num_rows"`
+	Duration           time.Duration     `json:"duration"`
 	StoragePath        string            `json:"storage_path"`
 	StorageCompression ResultCompression `json:"storage_compression"`
 }
@@ -46,6 +47,7 @@ type Execution struct {
 	Query     string
 	Tier      string
 	Status    Status
+	Secrets   map[string]string
 
 	CollapsedCounter int64
 	PickedAt         *time.Time

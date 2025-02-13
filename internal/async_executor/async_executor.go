@@ -2,6 +2,7 @@ package async_executor
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -165,6 +166,7 @@ type CreateOptions struct {
 	QueryId             string
 	Tier                string
 	CancelOtherVersions bool
+	Secrets             map[string]string
 }
 
 func (aex *AsyncExecutor) Create(
@@ -181,6 +183,18 @@ func (aex *AsyncExecutor) Create(
 
 	if len(opts.QueryId) == 0 {
 		opts.QueryId = queryHash
+	}
+
+	var secrets json.RawMessage
+
+	if len(opts.Secrets) > 0 {
+		var js, err = json.Marshal(opts.Secrets)
+
+		if err != nil {
+			return nil, err
+		}
+
+		secrets = js
 	}
 
 	var tx, err = aex.pool.Begin(ctx)
@@ -216,6 +230,7 @@ func (aex *AsyncExecutor) Create(
 		"query_hash": queryHash,
 		"query":      query,
 		"tier":       opts.Tier,
+		"secrets":    secrets,
 	})
 
 	if err != nil {

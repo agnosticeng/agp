@@ -4,6 +4,7 @@ insert into agp_execution (
     query_hash,
     query,
     tier,
+    secrets,
     status
 ) values (
     @created_by,
@@ -11,6 +12,7 @@ insert into agp_execution (
     @query_hash,
     @query,
     @tier,
+    @secrets,
     'PENDING'
 )
 on conflict (query_id)

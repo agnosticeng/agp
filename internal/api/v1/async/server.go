@@ -38,13 +38,31 @@ func (srv *Server) PostExecutions(
 	ctx context.Context,
 	request PostExecutionsRequestObject,
 ) (PostExecutionsResponseObject, error) {
+	var (
+		sql     string
+		secrets = make(map[string]string)
+	)
+
+	if request.TextBody != nil {
+		sql = *request.TextBody
+	} else {
+		sql = request.JSONBody.Sql
+
+		if request.JSONBody.Secrets != nil {
+			for _, secret := range *request.JSONBody.Secrets {
+				secrets[secret.Key] = secret.Value
+			}
+		}
+	}
+
 	ex, err := srv.aex.Create(
 		ctx,
 		utils.DerefOr(request.Params.QuotaKey, client_ip_middleware.FromContext(ctx)),
-		utils.Deref(request.Body),
+		sql,
 		async_executor.CreateOptions{
 			QueryId: utils.Deref(request.Params.QueryId),
 			Tier:    utils.Deref(request.Params.Tier),
+			Secrets: secrets,
 		},
 	)
 

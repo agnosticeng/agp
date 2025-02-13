@@ -11,8 +11,9 @@ func ToResultMetadata(md *async_executor.ResultMetadata) *ResultMetadata {
 	}
 
 	var (
-		res  ResultMetadata
-		meta []v1.Column
+		res        ResultMetadata
+		meta       []v1.Column
+		durationMs = md.Duration.Milliseconds()
 	)
 
 	for _, column := range md.Schema {
@@ -21,6 +22,7 @@ func ToResultMetadata(md *async_executor.ResultMetadata) *ResultMetadata {
 
 	res.Rows = &md.NumRows
 	res.Meta = &meta
+	res.Duration = &durationMs
 	return &res
 }
 

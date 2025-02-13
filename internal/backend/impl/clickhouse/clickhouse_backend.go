@@ -51,6 +51,10 @@ func (b *ClickhouseBackend) ExecuteQuery(ctx context.Context, query string, optf
 		ctx = clickhouse.Context(ctx, clickhouse.WithQuotaKey(runOpts.QuotaKey))
 	}
 
+	if len(runOpts.Parameters) > 0 {
+		ctx = clickhouse.Context(ctx, clickhouse.WithParameters(runOpts.Parameters))
+	}
+
 	queryRes, err := b.conn.Query(ctx, query)
 
 	if err != nil {
