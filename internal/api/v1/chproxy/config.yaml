@@ -1,0 +1,8 @@
+package: chproxy
+output: api.gen.go
+generate:
+  models: true
+  std-http-server: true
+  embedded-spec: true
+import-mapping:
+  ../common.yaml: github.com/agnosticeng/agp/internal/api/v1

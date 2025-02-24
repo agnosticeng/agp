@@ -67,7 +67,7 @@ components:
 
     QuotaKey:
       in: query
-      name: quota-key
+      name: quota_key
       schema:
         type: string
 

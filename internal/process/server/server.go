@@ -10,6 +10,7 @@ import (
 
 	"github.com/NYTimes/gziphandler"
 	"github.com/agnosticeng/agp/internal/api/v1/async"
+	"github.com/agnosticeng/agp/internal/api/v1/chproxy"
 	"github.com/agnosticeng/agp/internal/api/v1/sync"
 	"github.com/agnosticeng/agp/internal/async_executor"
 	backend_impl "github.com/agnosticeng/agp/internal/backend/impl"
@@ -34,9 +35,15 @@ type SyncAPIConfig struct {
 	Backends []BackendTierConfig
 }
 
+type CHProxyAPIConfig struct {
+	Enable   bool
+	Backends []BackendTierConfig
+}
+
 type APIConfig struct {
-	Sync  SyncAPIConfig
-	Async AsyncAPIConfig
+	Sync    SyncAPIConfig
+	Async   AsyncAPIConfig
+	ChProxy CHProxyAPIConfig
 }
 
 type BackendTierConfig struct {
@@ -126,6 +133,37 @@ func Server(ctx context.Context, aex *async_executor.AsyncExecutor, conf ServerC
 		mux.Handle("/v1/sync/spec.json", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { json.NewEncoder(w).Encode(lo.Must(sync.GetSwagger())) }))
 		mux.Handle("/v1/sync/docs/", v5emb.New("AGP Sync API", "/v1/sync/spec.json", "/v1/sync/docs/"))
 		mux.Handle("/v1/sync/", handler)
+	}
+
+	if conf.Api.ChProxy.Enable {
+		var bkds []chproxy.BackendTier
+
+		for _, backend := range conf.Api.ChProxy.Backends {
+			bkds = append(bkds, chproxy.BackendTier{Tier: backend.Tier, Backend: backend.Dsn})
+		}
+
+		var validationMiddleware = validationMiddleware(
+			swaggerWithServer(lo.Must(chproxy.GetSwagger()), "/v1/chproxy"),
+			openapi3_auth.OpenAPI3Secret(
+				conf.Secret,
+				openapi3_auth.OpenAPI3SecretConfig{
+					AllowEmpty: true,
+				},
+			),
+		)
+
+		var server, err = chproxy.NewServer(ctx, bkds)
+
+		if err != nil {
+			return err
+		}
+
+		var handler = chproxy.HandlerWithOptions(server, chproxy.StdHTTPServerOptions{BaseURL: "/v1/chproxy"})
+		handler = validationMiddleware(handler)
+		handler = client_ip_middleware.ClientIP(handler)
+		mux.Handle("/v1/chproxy/spec.json", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { json.NewEncoder(w).Encode(lo.Must(chproxy.GetSwagger())) }))
+		mux.Handle("/v1/chproxy/docs/", v5emb.New("AGP Clickhouse Proxy API", "/v1/chproxy/spec.json", "/v1/chproxy/docs/"))
+		mux.Handle("/v1/chproxy/", handler)
 	}
 
 	if len(conf.Addr) == 0 {

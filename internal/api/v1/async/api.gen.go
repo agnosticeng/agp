@@ -117,20 +117,20 @@ type PostExecutionsTextBody = string
 // PostExecutionsParams defines parameters for PostExecutions.
 type PostExecutionsParams struct {
 	Tier     *externalRef0.Tier     `form:"tier,omitempty" json:"tier,omitempty"`
-	QuotaKey *externalRef0.QuotaKey `form:"quota-key,omitempty" json:"quota-key,omitempty"`
+	QuotaKey *externalRef0.QuotaKey `form:"quota_key,omitempty" json:"quota_key,omitempty"`
 	QueryId  *QueryId               `form:"query-id,omitempty" json:"query-id,omitempty"`
 }
 
 // GetExecutionsExecutionIdParams defines parameters for GetExecutionsExecutionId.
 type GetExecutionsExecutionIdParams struct {
 	Tier     *externalRef0.Tier     `form:"tier,omitempty" json:"tier,omitempty"`
-	QuotaKey *externalRef0.QuotaKey `form:"quota-key,omitempty" json:"quota-key,omitempty"`
+	QuotaKey *externalRef0.QuotaKey `form:"quota_key,omitempty" json:"quota_key,omitempty"`
 }
 
 // GetExecutionsExecutionIdResultParams defines parameters for GetExecutionsExecutionIdResult.
 type GetExecutionsExecutionIdResultParams struct {
 	Tier       *externalRef0.Tier     `form:"tier,omitempty" json:"tier,omitempty"`
-	QuotaKey   *externalRef0.QuotaKey `form:"quota-key,omitempty" json:"quota-key,omitempty"`
+	QuotaKey   *externalRef0.QuotaKey `form:"quota_key,omitempty" json:"quota_key,omitempty"`
 	Signature  Signature              `form:"signature" json:"signature"`
 	Expiration Expiration             `form:"expiration" json:"expiration"`
 }
@@ -138,7 +138,7 @@ type GetExecutionsExecutionIdResultParams struct {
 // PostSearchParams defines parameters for PostSearch.
 type PostSearchParams struct {
 	Tier     *externalRef0.Tier     `form:"tier,omitempty" json:"tier,omitempty"`
-	QuotaKey *externalRef0.QuotaKey `form:"quota-key,omitempty" json:"quota-key,omitempty"`
+	QuotaKey *externalRef0.QuotaKey `form:"quota_key,omitempty" json:"quota_key,omitempty"`
 }
 
 // PostExecutionsJSONRequestBody defines body for PostExecutions for application/json ContentType.
@@ -197,11 +197,11 @@ func (siw *ServerInterfaceWrapper) PostExecutions(w http.ResponseWriter, r *http
 		return
 	}
 
-	// ------------- Optional query parameter "quota-key" -------------
+	// ------------- Optional query parameter "quota_key" -------------
 
-	err = runtime.BindQueryParameter("form", true, false, "quota-key", r.URL.Query(), &params.QuotaKey)
+	err = runtime.BindQueryParameter("form", true, false, "quota_key", r.URL.Query(), &params.QuotaKey)
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "quota-key", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "quota_key", Err: err})
 		return
 	}
 
@@ -255,11 +255,11 @@ func (siw *ServerInterfaceWrapper) GetExecutionsExecutionId(w http.ResponseWrite
 		return
 	}
 
-	// ------------- Optional query parameter "quota-key" -------------
+	// ------------- Optional query parameter "quota_key" -------------
 
-	err = runtime.BindQueryParameter("form", true, false, "quota-key", r.URL.Query(), &params.QuotaKey)
+	err = runtime.BindQueryParameter("form", true, false, "quota_key", r.URL.Query(), &params.QuotaKey)
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "quota-key", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "quota_key", Err: err})
 		return
 	}
 
@@ -299,11 +299,11 @@ func (siw *ServerInterfaceWrapper) GetExecutionsExecutionIdResult(w http.Respons
 		return
 	}
 
-	// ------------- Optional query parameter "quota-key" -------------
+	// ------------- Optional query parameter "quota_key" -------------
 
-	err = runtime.BindQueryParameter("form", true, false, "quota-key", r.URL.Query(), &params.QuotaKey)
+	err = runtime.BindQueryParameter("form", true, false, "quota_key", r.URL.Query(), &params.QuotaKey)
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "quota-key", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "quota_key", Err: err})
 		return
 	}
 
@@ -370,11 +370,11 @@ func (siw *ServerInterfaceWrapper) PostSearch(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	// ------------- Optional query parameter "quota-key" -------------
+	// ------------- Optional query parameter "quota_key" -------------
 
-	err = runtime.BindQueryParameter("form", true, false, "quota-key", r.URL.Query(), &params.QuotaKey)
+	err = runtime.BindQueryParameter("form", true, false, "quota_key", r.URL.Query(), &params.QuotaKey)
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "quota-key", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "quota_key", Err: err})
 		return
 	}
 
@@ -798,21 +798,21 @@ var swaggerSpec = []string{
 	"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",
-	"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",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

@@ -59,6 +59,8 @@ services:
       - AGP__SERVER__API__ASYNC__ENABLE=true 
       - AGP__SERVER__API__SYNC__ENABLE=true
       - AGP__SERVER__API__SYNC__BACKENDS__0__DSN=clickhouse://clickhouse:9000/default
+      - AGP__SERVER__API__CHPROXY__ENABLE=true
+      - AGP__SERVER__API__CHPROXY__BACKENDS__0__DSN=http://clickhouse:8123
       - AGP__SERVER__SECRET=secret 
 
 
