@@ -63,6 +63,7 @@ func (srv *Server) Post(w http.ResponseWriter, r *http.Request, params PostParam
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	var upstreamParams = upstreamReq.URL.Query()
@@ -74,6 +75,7 @@ func (srv *Server) Post(w http.ResponseWriter, r *http.Request, params PostParam
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	for k, v := range upstreamResp.Header {
