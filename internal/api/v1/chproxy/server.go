@@ -6,12 +6,18 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/agnosticeng/agp/internal/utils"
 	"github.com/agnosticeng/agp/pkg/client_ip_middleware"
 	"github.com/samber/lo"
 	slogctx "github.com/veqryn/slog-context"
 )
+
+var forwardHeaderPrefixes = []string{
+	"content-type",
+	"x-clickhouse-",
+}
 
 type BackendTier struct {
 	Tier    string
@@ -43,19 +49,22 @@ func (srv *Server) Post(w http.ResponseWriter, r *http.Request, params PostParam
 	var (
 		quotaKey string
 		tier     string
+		clientIp = client_ip_middleware.FromContext(r.Context())
 	)
 
 	if params.Authorization != nil {
-		quotaKey = utils.DerefOr(params.QuotaKey, client_ip_middleware.FromContext(r.Context()))
+		quotaKey = utils.DerefOr(params.QuotaKey, clientIp)
 		tier = utils.Deref(params.Tier)
 	} else {
-		quotaKey = client_ip_middleware.FromContext(r.Context())
+		quotaKey = clientIp
 	}
+
+	srv.logger.Debug(r.URL.String(), "client_ip", clientIp, "tier", tier, "quota_key", quotaKey)
 
 	var bkd, found = lo.Find(srv.bkds, func(v BackendTier) bool { return v.Tier == tier })
 
 	if !found {
-		http.Error(w, fmt.Sprintf("no backend found for tier: %s", tier), http.StatusInternalServerError)
+		httpError(srv.logger, w, fmt.Errorf("no backend found for tier: %s", tier), http.StatusInternalServerError)
 		return
 	}
 
@@ -74,7 +83,7 @@ func (srv *Server) Post(w http.ResponseWriter, r *http.Request, params PostParam
 	upstreamResp, err := srv.client.Do(upstreamReq)
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httpError(srv.logger, w, err, http.StatusInternalServerError)
 		return
 	}
 
@@ -83,9 +92,19 @@ func (srv *Server) Post(w http.ResponseWriter, r *http.Request, params PostParam
 			continue
 		}
 
-		w.Header().Set(k, v[0])
+		for _, h := range forwardHeaderPrefixes {
+			if strings.HasPrefix(strings.ToLower(k), h) {
+				w.Header().Set(k, v[0])
+				break
+			}
+		}
 	}
 
 	w.WriteHeader(upstreamResp.StatusCode)
 	io.Copy(w, upstreamResp.Body)
+}
+
+func httpError(logger *slog.Logger, w http.ResponseWriter, err error, statusCode int) {
+	logger.Error(err.Error(), "status_code", statusCode)
+	http.Error(w, err.Error(), statusCode)
 }

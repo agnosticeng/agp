@@ -19,6 +19,7 @@ import (
 	"github.com/agnosticeng/agp/pkg/openapi3_auth"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"
+	"github.com/joemiller/certin"
 	oapi_middleware "github.com/oapi-codegen/nethttp-middleware"
 	"github.com/rs/cors"
 	"github.com/samber/lo"
@@ -52,8 +53,9 @@ type BackendTierConfig struct {
 }
 
 type TLSConfig struct {
-	Cert string
-	Key  string
+	CommonName string
+	Cert       string
+	Key        string
 }
 
 type ServerConfig struct {
@@ -111,7 +113,7 @@ func Server(ctx context.Context, aex *async_executor.AsyncExecutor, conf ServerC
 		}
 
 		var validationMiddleware = validationMiddleware(
-			swaggerWithServer(lo.Must(async.GetSwagger()), "/v1/sync"),
+			swaggerWithServer(lo.Must(sync.GetSwagger()), "/v1/sync"),
 			openapi3_auth.OpenAPI3Secret(
 				conf.Secret,
 				openapi3_auth.OpenAPI3SecretConfig{
@@ -188,13 +190,27 @@ func Server(ctx context.Context, aex *async_executor.AsyncExecutor, conf ServerC
 	if conf.Tls != nil {
 		var tlsConf tls.Config
 
-		keypair, err := tls.LoadX509KeyPair(conf.Tls.Cert, conf.Tls.Key)
+		if len(conf.Tls.CommonName) > 0 {
+			kc, err := certin.NewCert(nil, certin.Request{
+				CN:   conf.Tls.CommonName,
+				SANs: []string{conf.Tls.CommonName},
+			})
 
-		if err != nil {
-			return err
+			if err != nil {
+				return err
+			}
+
+			tlsConf.Certificates = []tls.Certificate{kc.TLSCertificate()}
+		} else {
+			keypair, err := tls.LoadX509KeyPair(conf.Tls.Cert, conf.Tls.Key)
+
+			if err != nil {
+				return err
+			}
+
+			tlsConf.Certificates = []tls.Certificate{keypair}
 		}
 
-		tlsConf.Certificates = []tls.Certificate{keypair}
 		httpServer.TLSConfig = &tlsConf
 	}
 

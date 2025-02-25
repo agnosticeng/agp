@@ -45,7 +45,7 @@ services:
     ports:
       - '8888:8888'
     environment:
-      - LOG_LEVEL=0
+      - LOG_LEVEL=-4
       - OBJSTR__S3__REGION=us-east-1
       - OBJSTR__S3__ACCESS_KEY_ID=minio
       - OBJSTR__S3__SECRET_ACCESS_KEY=minio123
