@@ -7,10 +7,10 @@ import (
 	"log/slog"
 	"time"
 
+	v1 "github.com/agnosticeng/agp/internal/api/v1"
 	"github.com/agnosticeng/agp/internal/async_executor"
 	"github.com/agnosticeng/agp/internal/signer"
 	"github.com/agnosticeng/agp/internal/utils"
-	"github.com/agnosticeng/agp/pkg/client_ip_middleware"
 	"github.com/samber/lo"
 	"github.com/sourcegraph/conc/pool"
 	slogctx "github.com/veqryn/slog-context"
@@ -39,6 +39,7 @@ func (srv *Server) PostExecutions(
 	request PostExecutionsRequestObject,
 ) (PostExecutionsResponseObject, error) {
 	var (
+		claims  = v1.ClaimsFromContext(ctx)
 		sql     string
 		secrets = make(map[string]string)
 	)
@@ -57,11 +58,11 @@ func (srv *Server) PostExecutions(
 
 	ex, err := srv.aex.Create(
 		ctx,
-		utils.DerefOr(request.Params.QuotaKey, client_ip_middleware.FromContext(ctx)),
+		claims.QuotaKey,
 		sql,
 		async_executor.CreateOptions{
 			QueryId: utils.Deref(request.Params.QueryId),
-			Tier:    utils.Deref(request.Params.Tier),
+			Tier:    utils.Deref(&claims.Tier),
 			Secrets: secrets,
 		},
 	)

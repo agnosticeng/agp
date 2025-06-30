@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/NYTimes/gziphandler"
+	v1 "github.com/agnosticeng/agp/internal/api/v1"
 	"github.com/agnosticeng/agp/internal/api/v1/async"
 	"github.com/agnosticeng/agp/internal/api/v1/chproxy"
 	"github.com/agnosticeng/agp/internal/api/v1/sync"
@@ -61,6 +62,7 @@ type TLSConfig struct {
 type ServerConfig struct {
 	Addr        string
 	Secret      string
+	Jwt         openapi3_auth.OpenAPI3JWTConfig
 	Api         APIConfig
 	Tls         *TLSConfig
 	DisableCors bool
@@ -69,24 +71,22 @@ type ServerConfig struct {
 
 func Server(ctx context.Context, aex *async_executor.AsyncExecutor, conf ServerConfig) error {
 	var (
-		logger = slogctx.FromCtx(ctx)
-		mux    = http.NewServeMux()
+		logger           = slogctx.FromCtx(ctx)
+		mux              = http.NewServeMux()
+		sig              = signer.HMAC256Signer([]byte(conf.Secret))
+		jwtAuthFunc, err = openapi3_auth.OpenAPI3JWT[v1.Claims](conf.Jwt)
 	)
 
-	var sig = signer.HMAC256Signer([]byte(conf.Secret))
+	if err != nil {
+		return err
+	}
 
 	if conf.Api.Async.Enable {
 		if aex == nil {
 			return fmt.Errorf("AsyncExecutor must be provided for async API to work")
 		}
 
-		var validationMiddleware = validationMiddleware(
-			swaggerWithServer(lo.Must(async.GetSwagger()), "/v1/async"),
-			openapi3_auth.OpenAPI3Secret(
-				conf.Secret,
-				openapi3_auth.OpenAPI3SecretConfig{},
-			),
-		)
+		var validationMiddleware = validationMiddleware(swaggerWithServer(lo.Must(async.GetSwagger()), "/v1/async"), jwtAuthFunc)
 		var strictHandler = async.NewStrictHandler(async.NewServer(ctx, sig, aex), nil)
 		var handler = async.HandlerWithOptions(strictHandler, async.StdHTTPServerOptions{BaseURL: "/v1/async"})
 		handler = validationMiddleware(handler)
@@ -112,15 +112,7 @@ func Server(ctx context.Context, aex *async_executor.AsyncExecutor, conf ServerC
 			bkds = append(bkds, sync.BackendTier{Tier: backend.Tier, Backend: bkd})
 		}
 
-		var validationMiddleware = validationMiddleware(
-			swaggerWithServer(lo.Must(sync.GetSwagger()), "/v1/sync"),
-			openapi3_auth.OpenAPI3Secret(
-				conf.Secret,
-				openapi3_auth.OpenAPI3SecretConfig{
-					AllowEmpty: true,
-				},
-			),
-		)
+		var validationMiddleware = validationMiddleware(swaggerWithServer(lo.Must(sync.GetSwagger()), "/v1/sync"), jwtAuthFunc)
 
 		var server, err = sync.NewServer(ctx, bkds)
 
@@ -144,15 +136,7 @@ func Server(ctx context.Context, aex *async_executor.AsyncExecutor, conf ServerC
 			bkds = append(bkds, chproxy.BackendTier{Tier: backend.Tier, Backend: backend.Dsn})
 		}
 
-		var validationMiddleware = validationMiddleware(
-			swaggerWithServer(lo.Must(chproxy.GetSwagger()), "/v1/chproxy"),
-			openapi3_auth.OpenAPI3Secret(
-				conf.Secret,
-				openapi3_auth.OpenAPI3SecretConfig{
-					AllowEmpty: true,
-				},
-			),
-		)
+		var validationMiddleware = validationMiddleware(swaggerWithServer(lo.Must(chproxy.GetSwagger()), "/v1/chproxy"), jwtAuthFunc)
 
 		var server, err = chproxy.NewServer(ctx, bkds)
 

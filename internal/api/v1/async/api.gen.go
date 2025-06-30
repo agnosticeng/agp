@@ -116,15 +116,7 @@ type PostExecutionsTextBody = string
 
 // PostExecutionsParams defines parameters for PostExecutions.
 type PostExecutionsParams struct {
-	Tier     *externalRef0.Tier     `form:"tier,omitempty" json:"tier,omitempty"`
-	QuotaKey *externalRef0.QuotaKey `form:"quota_key,omitempty" json:"quota_key,omitempty"`
-	QueryId  *QueryId               `form:"query-id,omitempty" json:"query-id,omitempty"`
-}
-
-// GetExecutionsExecutionIdParams defines parameters for GetExecutionsExecutionId.
-type GetExecutionsExecutionIdParams struct {
-	Tier     *externalRef0.Tier     `form:"tier,omitempty" json:"tier,omitempty"`
-	QuotaKey *externalRef0.QuotaKey `form:"quota_key,omitempty" json:"quota_key,omitempty"`
+	QueryId *QueryId `form:"query-id,omitempty" json:"query-id,omitempty"`
 }
 
 // GetExecutionsExecutionIdResultParams defines parameters for GetExecutionsExecutionIdResult.
@@ -133,12 +125,6 @@ type GetExecutionsExecutionIdResultParams struct {
 	QuotaKey   *externalRef0.QuotaKey `form:"quota_key,omitempty" json:"quota_key,omitempty"`
 	Signature  Signature              `form:"signature" json:"signature"`
 	Expiration Expiration             `form:"expiration" json:"expiration"`
-}
-
-// PostSearchParams defines parameters for PostSearch.
-type PostSearchParams struct {
-	Tier     *externalRef0.Tier     `form:"tier,omitempty" json:"tier,omitempty"`
-	QuotaKey *externalRef0.QuotaKey `form:"quota_key,omitempty" json:"quota_key,omitempty"`
 }
 
 // PostExecutionsJSONRequestBody defines body for PostExecutions for application/json ContentType.
@@ -157,13 +143,13 @@ type ServerInterface interface {
 	PostExecutions(w http.ResponseWriter, r *http.Request, params PostExecutionsParams)
 
 	// (GET /executions/{execution_id})
-	GetExecutionsExecutionId(w http.ResponseWriter, r *http.Request, executionId ExecutionId, params GetExecutionsExecutionIdParams)
+	GetExecutionsExecutionId(w http.ResponseWriter, r *http.Request, executionId ExecutionId)
 
 	// (GET /executions/{execution_id}/result)
 	GetExecutionsExecutionIdResult(w http.ResponseWriter, r *http.Request, executionId ExecutionId, params GetExecutionsExecutionIdResultParams)
 
 	// (POST /search)
-	PostSearch(w http.ResponseWriter, r *http.Request, params PostSearchParams)
+	PostSearch(w http.ResponseWriter, r *http.Request)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -188,22 +174,6 @@ func (siw *ServerInterfaceWrapper) PostExecutions(w http.ResponseWriter, r *http
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params PostExecutionsParams
-
-	// ------------- Optional query parameter "tier" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "tier", r.URL.Query(), &params.Tier)
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "tier", Err: err})
-		return
-	}
-
-	// ------------- Optional query parameter "quota_key" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "quota_key", r.URL.Query(), &params.QuotaKey)
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "quota_key", Err: err})
-		return
-	}
 
 	// ------------- Optional query parameter "query-id" -------------
 
@@ -244,27 +214,8 @@ func (siw *ServerInterfaceWrapper) GetExecutionsExecutionId(w http.ResponseWrite
 
 	r = r.WithContext(ctx)
 
-	// Parameter object where we will unmarshal all parameters from the context
-	var params GetExecutionsExecutionIdParams
-
-	// ------------- Optional query parameter "tier" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "tier", r.URL.Query(), &params.Tier)
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "tier", Err: err})
-		return
-	}
-
-	// ------------- Optional query parameter "quota_key" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "quota_key", r.URL.Query(), &params.QuotaKey)
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "quota_key", Err: err})
-		return
-	}
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetExecutionsExecutionId(w, r, executionId, params)
+		siw.Handler.GetExecutionsExecutionId(w, r, executionId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -351,35 +302,14 @@ func (siw *ServerInterfaceWrapper) GetExecutionsExecutionIdResult(w http.Respons
 // PostSearch operation middleware
 func (siw *ServerInterfaceWrapper) PostSearch(w http.ResponseWriter, r *http.Request) {
 
-	var err error
-
 	ctx := r.Context()
 
 	ctx = context.WithValue(ctx, SecretScopes, []string{})
 
 	r = r.WithContext(ctx)
 
-	// Parameter object where we will unmarshal all parameters from the context
-	var params PostSearchParams
-
-	// ------------- Optional query parameter "tier" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "tier", r.URL.Query(), &params.Tier)
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "tier", Err: err})
-		return
-	}
-
-	// ------------- Optional query parameter "quota_key" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "quota_key", r.URL.Query(), &params.QuotaKey)
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "quota_key", Err: err})
-		return
-	}
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PostSearch(w, r, params)
+		siw.Handler.PostSearch(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -538,7 +468,6 @@ func (response PostExecutions201JSONResponse) VisitPostExecutionsResponse(w http
 
 type GetExecutionsExecutionIdRequestObject struct {
 	ExecutionId ExecutionId `json:"execution_id"`
-	Params      GetExecutionsExecutionIdParams
 }
 
 type GetExecutionsExecutionIdResponseObject interface {
@@ -599,8 +528,7 @@ func (response GetExecutionsExecutionIdResult404Response) VisitGetExecutionsExec
 }
 
 type PostSearchRequestObject struct {
-	Params PostSearchParams
-	Body   *PostSearchJSONRequestBody
+	Body *PostSearchJSONRequestBody
 }
 
 type PostSearchResponseObject interface {
@@ -706,11 +634,10 @@ func (sh *strictHandler) PostExecutions(w http.ResponseWriter, r *http.Request, 
 }
 
 // GetExecutionsExecutionId operation middleware
-func (sh *strictHandler) GetExecutionsExecutionId(w http.ResponseWriter, r *http.Request, executionId ExecutionId, params GetExecutionsExecutionIdParams) {
+func (sh *strictHandler) GetExecutionsExecutionId(w http.ResponseWriter, r *http.Request, executionId ExecutionId) {
 	var request GetExecutionsExecutionIdRequestObject
 
 	request.ExecutionId = executionId
-	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.GetExecutionsExecutionId(ctx, request.(GetExecutionsExecutionIdRequestObject))
@@ -760,10 +687,8 @@ func (sh *strictHandler) GetExecutionsExecutionIdResult(w http.ResponseWriter, r
 }
 
 // PostSearch operation middleware
-func (sh *strictHandler) PostSearch(w http.ResponseWriter, r *http.Request, params PostSearchParams) {
+func (sh *strictHandler) PostSearch(w http.ResponseWriter, r *http.Request) {
 	var request PostSearchRequestObject
-
-	request.Params = params
 
 	var body PostSearchJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -795,24 +720,24 @@ func (sh *strictHandler) PostSearch(w http.ResponseWriter, r *http.Request, para
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

@@ -56,12 +56,19 @@ services:
       - AGP__RESULT_STORAGE_PREFIX=s3://agp-results
       - AGP__RESULT_STORAGE_COMPRESSION=GZIP 
       - AGP__WORKER__BACKENDS__0__DSN=clickhouse://clickhouse:9000/default
+      - AGP__WORKER__BACKENDS__1__TIER=vip
+      - AGP__WORKER__BACKENDS__1__DSN=clickhouse://clickhouse:9000/default
       - AGP__SERVER__API__ASYNC__ENABLE=true 
       - AGP__SERVER__API__SYNC__ENABLE=true
       - AGP__SERVER__API__SYNC__BACKENDS__0__DSN=clickhouse://clickhouse:9000/default
+      - AGP__SERVER__API__SYNC__BACKENDS__1__TIER=vip
+      - AGP__SERVER__API__SYNC__BACKENDS__1__DSN=clickhouse://clickhouse:9000/default
       - AGP__SERVER__API__CHPROXY__ENABLE=true
       - AGP__SERVER__API__CHPROXY__BACKENDS__0__DSN=http://clickhouse:8123
-      - AGP__SERVER__SECRET=secret 
+      - AGP__SERVER__API__CHPROXY__BACKENDS__1__TIER=vip
+      - AGP__SERVER__API__CHPROXY__BACKENDS__1__DSN=http://clickhouse:8123
+      - AGP__SERVER__SECRET=mysecret 
+      - AGP__SERVER__JWT__KEY=mysecretkey
 
 
 

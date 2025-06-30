@@ -33,10 +33,7 @@ type PostRunTextBody = string
 
 // PostRunParams defines parameters for PostRun.
 type PostRunParams struct {
-	QuotaKey      *externalRef0.QuotaKey      `form:"quota_key,omitempty" json:"quota_key,omitempty"`
-	Tier          *externalRef0.Tier          `form:"tier,omitempty" json:"tier,omitempty"`
-	Stream        *externalRef0.Stream        `form:"stream,omitempty" json:"stream,omitempty"`
-	Authorization *externalRef0.Authorization `json:"Authorization,omitempty"`
+	Stream *externalRef0.Stream `form:"stream,omitempty" json:"stream,omitempty"`
 }
 
 // PostRunTextRequestBody defines body for PostRun for text/plain ContentType.
@@ -72,49 +69,12 @@ func (siw *ServerInterfaceWrapper) PostRun(w http.ResponseWriter, r *http.Reques
 	// Parameter object where we will unmarshal all parameters from the context
 	var params PostRunParams
 
-	// ------------- Optional query parameter "quota_key" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "quota_key", r.URL.Query(), &params.QuotaKey)
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "quota_key", Err: err})
-		return
-	}
-
-	// ------------- Optional query parameter "tier" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "tier", r.URL.Query(), &params.Tier)
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "tier", Err: err})
-		return
-	}
-
 	// ------------- Optional query parameter "stream" -------------
 
 	err = runtime.BindQueryParameter("form", true, false, "stream", r.URL.Query(), &params.Stream)
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "stream", Err: err})
 		return
-	}
-
-	headers := r.Header
-
-	// ------------- Optional header parameter "Authorization" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("Authorization")]; found {
-		var Authorization externalRef0.Authorization
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Authorization", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "Authorization", valueList[0], &Authorization, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Authorization", Err: err})
-			return
-		}
-
-		params.Authorization = &Authorization
-
 	}
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -363,17 +323,16 @@ func (sh *strictHandler) PostRun(w http.ResponseWriter, r *http.Request, params 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/6xVQW/bPAz9KwW/7+jFaTfs4Fs37FDssKzZrQgK1WYSdZaoUnRWr/B/HyQ7cZrYmwes",
-	"p1oiH8mnx5cXyMk4smjFQ/YCTrEyKMjxKydjyN5fV7Il1j+VaLLhXFvIYIuqQIYErDIIGbyOSsDnWzQq",
-	"hEvtQoAX1nYDTZPsgb9WJOoz1gfMpwq57iGfwv39d6ynwS2FUZkxMN/eDiA9EJWo7DHUN408BiQ6jj3e",
-	"ULO/PCbxI5WView5JocsGuN1C3oGknQHQ+MyPlWasYDsrk3vglf7JKCHR8wF+nkWTBtG78/rP9TS/rMm",
-	"NkogA23l/Ts4YGkruEEOYFgq50PdgWijrTaVgWw+lMn0Y2oRIVHl/eSE5s9Df9qhlfPJ3REn/zOuIYP/",
-	"0n4d0u4N01MKf1fyFn1VDtQqlESpaEETD1RR6LAoqlwcBw5BdweKWdXh2+AJ1oTmO/UNoP0LotupDzSr",
-	"svyyhuxuUmcdY01yShkyEw8vwEkfq7hxmFespV4G+BZhiTlj7CjWjKuOiuP2dhBbEddurLZritW0lNHO",
-	"Npa86PxiwfRcXyxrm19cL24ggR2yj0YIl7P5bB54IIdWOQ0ZvJ3NZ1eQgFOyjU2kXLVbTz62EkaMFnlT",
-	"QAYL8nJb2ZjQO+8Ic31IOujMgcNpeQfjnZ4SHXF6eOfFzaq1K/TygYq69UMrnVAEnyV1pdL28Ehjhtp7",
-	"nnCF8cA7sr596av5/ARaOVfqPPKSPno6KfAXugxyC21iUPcbf/iJ6cHI4nS5v/akMT4He+lSVk3312s+",
-	"FA9Qe8HfrQLvHnm3l1PFJWSQ7i5TX9s8gPwKAAD//8q8pPD6BwAA",
+	"H4sIAAAAAAAC/6xUT2/bPgz9KgV/v6MXu92wg2/dsENPC5pjERSqzaQqJFGl6KxG4e8+SHbi1vE2D1hO",
+	"sUi+Rz7+eYWKrCeHTgKUr+AVK4uCnL4qspbc/UYYlY0P2kEJzw1yCxk4ZRFKCL01g1A9olXRTVofLQ9E",
+	"BpWDruuO1rewX8k01iVWJo8sGpO5xz2hBGHt9tBlw8OZocuA8bnRjDWUd3344Lw9BgE9PGElEWVgXzPt",
+	"GUM4539opf+zI7ZKoATt5PMnOGFpJ7hHjmBolA+Rd8bbaqdtY6Es5iKZfiwlERJl7hcHdH8u+tsBnZxX",
+	"7t9o8j/jDkr4Lx8HJB96mE8l/B3lLYbGzHDVStKsaEGbHlRda9HklFm/dZyDHh4Us2rjt8UJ1oLkh+mb",
+	"QfsXQvdVn2RWxnzfQXm3KLNBsS6bSobMxPMLMMljmzYOq4a1tJsI3yNssGJMGSXOtKSoGHms7lHE9xur",
+	"3Y4SmxYTLdd7R0F0dbFmemkvNq2rLq7XN5DBATloirfhclWsiqgDeXTKayjh46pYXUEGXsljSiLnpt96",
+	"CimVWKKKnb+poYQ1BbltXAoYb9EvlBtd8ve3qtv2RwGDfKG67a+Ok6Edgi+Se6O0O0mh5nR9d1mEG0wP",
+	"wZMLvZ5XRTGBVt4bXaVy8qdAE4K/6H5sakwT4wx9CKcTPIKRw+VD9X7z42wtzmUI2XbDb5ysRH6cqbtt",
+	"l71G3QPy4di0hg2UkB8u89C6KoL8DAAA//+7BezVcgYAAA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

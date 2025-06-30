@@ -34,10 +34,7 @@ type PostTextBody = string
 
 // PostParams defines parameters for Post.
 type PostParams struct {
-	QuotaKey      *externalRef0.QuotaKey      `form:"quota_key,omitempty" json:"quota_key,omitempty"`
-	Tier          *externalRef0.Tier          `form:"tier,omitempty" json:"tier,omitempty"`
-	DefaultFormat *string                     `form:"default_format,omitempty" json:"default_format,omitempty"`
-	Authorization *externalRef0.Authorization `json:"Authorization,omitempty"`
+	DefaultFormat *string `form:"default_format,omitempty" json:"default_format,omitempty"`
 }
 
 // PostFormdataRequestBody defines body for Post for application/x-www-form-urlencoded ContentType.
@@ -76,49 +73,12 @@ func (siw *ServerInterfaceWrapper) Post(w http.ResponseWriter, r *http.Request) 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params PostParams
 
-	// ------------- Optional query parameter "quota_key" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "quota_key", r.URL.Query(), &params.QuotaKey)
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "quota_key", Err: err})
-		return
-	}
-
-	// ------------- Optional query parameter "tier" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "tier", r.URL.Query(), &params.Tier)
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "tier", Err: err})
-		return
-	}
-
 	// ------------- Optional query parameter "default_format" -------------
 
 	err = runtime.BindQueryParameter("form", true, false, "default_format", r.URL.Query(), &params.DefaultFormat)
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "default_format", Err: err})
 		return
-	}
-
-	headers := r.Header
-
-	// ------------- Optional header parameter "Authorization" -------------
-	if valueList, found := headers[http.CanonicalHeaderKey("Authorization")]; found {
-		var Authorization externalRef0.Authorization
-		n := len(valueList)
-		if n != 1 {
-			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Authorization", Count: n})
-			return
-		}
-
-		err = runtime.BindStyledParameterWithOptions("simple", "Authorization", valueList[0], &Authorization, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false})
-		if err != nil {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Authorization", Err: err})
-			return
-		}
-
-		params.Authorization = &Authorization
-
 	}
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -260,14 +220,12 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/4xSwY7aMBD9FTTt0ZDs9pbbtpeueqFabiuEXGfYWJt4zHgMpMj/XtkU0EoLIqdk8t7z",
-	"+L13AEODJ4dOAjQH8Jr1gIJcvgwNA7nVU5SO2P7VYsnluXXQQIe6RQYFTg8IDXxEKQimw0FnuIw+A4Kw",
-	"dW+QkjoJ/44k+heOZ81NRB4vkpv8f/WO431yC4t8TUps2fW6SlIQ0ES2Mr5kEBYHXtAwSn4rzMz4g5qL",
-	"1n+FTsQf+datqUhb6Ysjb46CWDOZM+3HyY/emneKASc/F4v55Gn+DAq2yKG4Cg+zelZDUkAenfYWGvg2",
-	"q2ePoMBr6co6VcmIQtmIPHIx+7mFBuZ5qj4E+HqAr4xraOBLdYm5ukCqTwNO6l7eOb/7KSWjDP8spBbX",
-	"OvayWhMPWm7GtVTAuIkY5Du147GsTtAVZ7T3vTXlNtV+utvtpllxGrlHZ6jFFppDUiC4l8r32rpzwNeq",
-	"kc+ynInCEcsgeHLh2JLHur6xARlBmQZh1EM++Phc6paDyo6cuva6zLcLyNtTipF7aKDaPlSm87lLkJbp",
-	"XwAAAP//e/4MRrsDAAA=",
+	"H4sIAAAAAAAC/3xRu27jMBD8FWNq2lJynbrcNZfOQNIFxoFHrWPiJC6zXNoWBP77gRSSMioEcPYxMzsr",
+	"HM+RAwVNGFYkclm8Li/uQjM16IWckLZiAzHgL1khgYEusb4vqhGlFAMfzlxb1etUK0/vgZN6tzsK35fd",
+	"r8m7f5wT7X6/vh53T8dnGFxJkueAAQ+H/tCjGHCkYKPHgB+H/vAIg2j10uR09Rc5NUUcSax6Ds8jBhwr",
+	"WlvFzqQkCcPbCl83f2SSBQbBNgMjnW2e9M+ZZbZ1plmzTflmKan48I5STgZCH5mS/uRxqR2Og1Jo/DbG",
+	"ybumoLvvb7fbvm7cZ5koOB5pxLAWA6W7dnGyVcr6DVfZuLzUQZVMDUiRQ9qyeOz7bxSwU9J9UiE7V+Lt",
+	"M1+htnN8xvl2Kmat7hLJ9fNWWSYM6K4PnbvEmhjKqfwPAAD//yNLSzUkAgAA",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

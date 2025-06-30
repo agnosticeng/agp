@@ -12,7 +12,7 @@ LABEL org.opencontainers.image.source=https://github.com/agnosticeng/agp
 
 COPY --from=build /code/bin/* /
 
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
-RUN update-ca-certificates
+# RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
+# RUN update-ca-certificates
 
 ENTRYPOINT ["/agp"]

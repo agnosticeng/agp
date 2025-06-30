@@ -14,7 +14,7 @@ components:
   securitySchemes:
     Secret:
       type: http
-      scheme: Basic
+      scheme: bearer
 
   schemas:
     SortBy:
@@ -176,8 +176,6 @@ paths:
   /executions:
     post:
       parameters:
-        - $ref: '../common.yaml#/components/parameters/Tier'
-        - $ref: '../common.yaml#/components/parameters/QuotaKey'
         - $ref: '#/components/parameters/QueryId'
       requestBody:
         required: true
@@ -199,8 +197,6 @@ paths:
   /executions/{execution_id}:
     get:
       parameters:
-        - $ref: '../common.yaml#/components/parameters/Tier'
-        - $ref: '../common.yaml#/components/parameters/QuotaKey'
         - $ref: "#/components/parameters/ExecutionId"
       responses:
         "200":
@@ -230,9 +226,6 @@ paths:
 
   /search:
     post:
-      parameters:
-        - $ref: '../common.yaml#/components/parameters/Tier'
-        - $ref: '../common.yaml#/components/parameters/QuotaKey'
       requestBody:
         required: true
         content:

@@ -33,6 +33,9 @@ require (
 	github.com/Masterminds/goutils v1.1.1 // indirect
 	github.com/Masterminds/semver/v3 v3.3.1 // indirect
 	github.com/Masterminds/sprig/v3 v3.3.0 // indirect
+	github.com/MicahParks/jwkset v0.9.6 // indirect
+	github.com/MicahParks/keyfunc v1.9.0 // indirect
+	github.com/MicahParks/keyfunc/v3 v3.4.0 // indirect
 	github.com/agnosticeng/concu v0.0.2 // indirect
 	github.com/agnosticeng/dynamap v0.1.2 // indirect
 	github.com/agnosticeng/mapstructure-hooks v0.3.0 // indirect
@@ -47,6 +50,8 @@ require (
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-openapi/jsonpointer v0.21.0 // indirect
 	github.com/go-openapi/swag v0.23.0 // indirect
+	github.com/golang-jwt/jwt/v4 v4.5.2 // indirect
+	github.com/golang-jwt/jwt/v5 v5.2.2 // indirect
 	github.com/gorilla/mux v1.8.1 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
@@ -89,6 +94,7 @@ require (
 	golang.org/x/mod v0.23.0 // indirect
 	golang.org/x/sys v0.30.0 // indirect
 	golang.org/x/text v0.22.0 // indirect
+	golang.org/x/time v0.12.0 // indirect
 	golang.org/x/tools v0.30.0 // indirect
 	google.golang.org/protobuf v1.36.4 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect

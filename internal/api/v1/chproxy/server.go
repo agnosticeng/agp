@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"strings"
 
+	v1 "github.com/agnosticeng/agp/internal/api/v1"
 	"github.com/agnosticeng/agp/internal/utils"
-	"github.com/agnosticeng/agp/pkg/client_ip_middleware"
 	"github.com/samber/lo"
 	slogctx "github.com/veqryn/slog-context"
 )
@@ -46,25 +46,14 @@ func NewServer(
 }
 
 func (srv *Server) Post(w http.ResponseWriter, r *http.Request, params PostParams) {
-	var (
-		quotaKey string
-		tier     string
-		clientIp = client_ip_middleware.FromContext(r.Context())
-	)
+	var claims = v1.ClaimsFromContext(r.Context())
 
-	if params.Authorization != nil {
-		quotaKey = utils.DerefOr(params.QuotaKey, clientIp)
-		tier = utils.Deref(params.Tier)
-	} else {
-		quotaKey = clientIp
-	}
+	srv.logger.Debug(r.URL.String(), "tier", claims.Tier, "quota_key", claims.QuotaKey)
 
-	srv.logger.Debug(r.URL.String(), "client_ip", clientIp, "tier", tier, "quota_key", quotaKey)
-
-	var bkd, found = lo.Find(srv.bkds, func(v BackendTier) bool { return v.Tier == tier })
+	var bkd, found = lo.Find(srv.bkds, func(v BackendTier) bool { return v.Tier == claims.Tier })
 
 	if !found {
-		httpError(srv.logger, w, fmt.Errorf("no backend found for tier: %s", tier), http.StatusInternalServerError)
+		httpError(srv.logger, w, fmt.Errorf("no backend found for tier: %s", claims.Tier), http.StatusInternalServerError)
 		return
 	}
 
@@ -76,7 +65,7 @@ func (srv *Server) Post(w http.ResponseWriter, r *http.Request, params PostParam
 	}
 
 	var upstreamParams = upstreamReq.URL.Query()
-	upstreamParams.Set("quota_key", quotaKey)
+	upstreamParams.Set("quota_key", claims.QuotaKey)
 	upstreamParams.Set("default_format", utils.DerefOr(params.DefaultFormat, "TabSeparated"))
 	upstreamReq.URL.RawQuery = upstreamParams.Encode()
 

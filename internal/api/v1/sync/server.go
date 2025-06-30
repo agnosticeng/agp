@@ -9,7 +9,6 @@ import (
 	v1 "github.com/agnosticeng/agp/internal/api/v1"
 	"github.com/agnosticeng/agp/internal/backend"
 	"github.com/agnosticeng/agp/internal/utils"
-	"github.com/agnosticeng/agp/pkg/client_ip_middleware"
 	"github.com/agnosticeng/agp/pkg/json_text_event_stream"
 	"github.com/samber/lo"
 	slogctx "github.com/veqryn/slog-context"
@@ -40,29 +39,19 @@ func NewServer(
 }
 
 func (srv *Server) PostRun(ctx context.Context, request PostRunRequestObject) (PostRunResponseObject, error) {
-	var (
-		quotaKey string
-		tier     string
-	)
+	var claims = v1.ClaimsFromContext(ctx)
 
-	if request.Params.Authorization != nil {
-		quotaKey = utils.DerefOr(request.Params.QuotaKey, client_ip_middleware.FromContext(ctx))
-		tier = utils.Deref(request.Params.Tier)
-	} else {
-		quotaKey = client_ip_middleware.FromContext(ctx)
-	}
-
-	var bkd, found = lo.Find(srv.bkds, func(v BackendTier) bool { return v.Tier == tier })
+	var bkd, found = lo.Find(srv.bkds, func(v BackendTier) bool { return v.Tier == claims.Tier })
 
 	if !found {
-		return nil, fmt.Errorf("no backend found for tier: %s", tier)
+		return nil, fmt.Errorf("no backend found for tier: %s", claims.Tier)
 	}
 
 	if !utils.DerefOr(request.Params.Stream, false) {
 		res, err := bkd.Backend.ExecuteQuery(
 			ctx,
 			*request.Body,
-			backend.WithQuotaKey(quotaKey),
+			backend.WithQuotaKey(claims.QuotaKey),
 		)
 
 		if err != nil {
@@ -83,7 +72,7 @@ func (srv *Server) PostRun(ctx context.Context, request PostRunRequestObject) (P
 		res, err := bkd.Backend.ExecuteQuery(
 			ctx,
 			*request.Body,
-			backend.WithQuotaKey(quotaKey),
+			backend.WithQuotaKey(claims.QuotaKey),
 			backend.WithProgressHandler(func(p backend.Progress) {
 				enc.Encode("progress", v1.ProgressEvent{Progress: v1.ToProgress(&p)})
 			}),
